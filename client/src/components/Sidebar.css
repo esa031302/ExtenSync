@@ -1,0 +1,128 @@
+.sidebar-container {
+  background-color: #e8f5e9;
+  border-radius: 12px;
+  padding: 1rem 0.5rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.sidebar-nav {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.sidebar-nav-item {
+  flex: 1;
+  min-width: 0;
+}
+
+.sidebar-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-decoration: none;
+  color: #2e7d32;
+  padding: 0.75rem 0.5rem;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  min-height: 80px;
+  justify-content: center;
+  box-sizing: border-box;
+  border: 2px solid transparent;
+}
+
+.sidebar-link:hover {
+  background-color: #f0f0f0;
+  border: 2px solid #4CAF50;
+  text-decoration: none;
+  color: #2e7d32;
+}
+
+.sidebar-link.active {
+  background-color: #f0f0f0;
+  border: 2px solid #4CAF50;
+}
+
+.sidebar-icon-container {
+  width: 40px;
+  height: 40px;
+  background-color: #4CAF50;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+}
+
+.sidebar-icon {
+  color: white;
+  font-size: 1.2rem;
+}
+
+.sidebar-label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-align: center;
+  line-height: 1.2;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .sidebar-nav {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  
+  .sidebar-nav-item {
+    width: 100%;
+  }
+  
+  .sidebar-link {
+    flex-direction: row;
+    justify-content: flex-start;
+    padding: 0.5rem 1rem;
+    min-height: auto;
+  }
+  
+  .sidebar-icon-container {
+    margin-bottom: 0;
+    margin-right: 0.75rem;
+    width: 32px;
+    height: 32px;
+  }
+  
+  .sidebar-icon {
+    font-size: 1rem;
+  }
+  
+  .sidebar-label {
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .sidebar-container {
+    padding: 0.75rem 0.25rem;
+  }
+  
+  .sidebar-link {
+    padding: 0.5rem;
+  }
+  
+  .sidebar-icon-container {
+    width: 28px;
+    height: 28px;
+    margin-right: 0.5rem;
+  }
+  
+  .sidebar-icon {
+    font-size: 0.9rem;
+  }
+  
+  .sidebar-label {
+    font-size: 0.8rem;
+  }
+}

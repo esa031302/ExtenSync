@@ -1,0 +1,126 @@
+.custom-navbar {
+  background-color: #f8f9fa !important;
+  border-bottom: 1px solid #e9ecef;
+  padding: 0.5rem 1rem;
+}
+
+.logo-section {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  color: #dc3545 !important;
+  font-weight: bold;
+  font-size: 1.2rem;
+}
+
+.logo-section:hover {
+  color: #c82333 !important;
+  text-decoration: none;
+}
+
+.logo-image {
+  filter: brightness(0) saturate(100%) invert(27%) sepia(51%) saturate(2878%) hue-rotate(346deg) brightness(104%) contrast(97%);
+  transition: filter 0.2s ease;
+}
+
+.logo-section:hover .logo-image {
+  filter: brightness(0) saturate(100%) invert(20%) sepia(100%) saturate(2878%) hue-rotate(346deg) brightness(80%) contrast(97%);
+}
+
+.navbar-right-content {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.navbar-icons {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.icon-button {
+  color: #6c757d !important;
+  padding: 0.5rem;
+  border: none;
+  background: none;
+  font-size: 1.2rem;
+  transition: color 0.2s ease;
+}
+
+.icon-button:hover {
+  color: #495057 !important;
+  background: none;
+  border: none;
+}
+
+.logout-icon-button {
+  color: #dc3545 !important;
+}
+
+.logout-icon-button:hover {
+  color: #c82333 !important;
+  background: none;
+  border: none;
+}
+
+.datetime-section {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  color: #6c757d;
+  font-family: 'Arial', sans-serif;
+  font-size: 0.9rem;
+  line-height: 1.2;
+}
+
+.day-text {
+  font-weight: normal;
+  color: #6c757d;
+}
+
+.date-text {
+  font-weight: normal;
+  color: #6c757d;
+}
+
+.time-text {
+  font-weight: bold;
+  color: #495057;
+  font-size: 1rem;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .navbar-right-content {
+    gap: 1rem;
+  }
+  
+  .navbar-icons {
+    gap: 0.5rem;
+  }
+  
+  .datetime-section {
+    font-size: 0.8rem;
+  }
+  
+  .logo-image {
+    height: 62px !important;
+  }
+}
+
+@media (max-width: 576px) {
+  .navbar-right-content {
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: flex-end;
+  }
+  
+  .datetime-section {
+    align-items: center;
+  }
+  
+  .logo-image {
+    height: 56px !important;
+  }
+}
