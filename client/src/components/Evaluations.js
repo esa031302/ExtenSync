@@ -17,8 +17,9 @@ const Evaluations = () => {
   const [stats, setStats] = useState(null);
 
   // Check if user has permission to view evaluations
-  const canViewEvaluations = user && ['Extension Head', 'GAD', 'Vice Chancellor', 'Chancellor', 'Admin'].includes(user.role);
+  const canViewEvaluations = user && ['Extension Coordinator', 'Extension Head', 'GAD', 'Vice Chancellor', 'Chancellor', 'Admin'].includes(user.role);
   const canCreateEvaluations = user && ['Extension Head', 'GAD', 'Vice Chancellor', 'Chancellor', 'Admin'].includes(user.role);
+  const isExtensionCoordinator = user && user.role === 'Extension Coordinator';
 
   useEffect(() => {
     if (!canViewEvaluations) {
@@ -111,13 +112,18 @@ const Evaluations = () => {
   }
 
   return (
-    <Container className="py-4">
+    <div className="py-4">
       <Row>
         <Col>
           <div className="d-flex justify-content-between align-items-center mb-4">
             <div>
               <h3 className="mb-1">Project Evaluations</h3>
-              <p className="text-muted mb-0">Review and manage project evaluations</p>
+              <p className="text-muted mb-0">
+                {isExtensionCoordinator 
+                  ? 'View evaluations for your projects'
+                  : 'Review and manage project evaluations'
+                }
+              </p>
             </div>
             {canCreateEvaluations && (
               <Button as={Link} to="/evaluations/new" variant="primary">
@@ -127,35 +133,7 @@ const Evaluations = () => {
             )}
           </div>
 
-          {/* Statistics Cards */}
-          {stats && (
-            <Row className="mb-4">
-              <Col md={3}>
-                <Card className="text-center stat-card">
-                  <Card.Body>
-                    <div className="stat-icon total">
-                      <i className="bi bi-clipboard-data"></i>
-                    </div>
-                    <h4 className="stat-number">{stats.total}</h4>
-                    <p className="stat-label">Total Evaluations</p>
-                  </Card.Body>
-                </Card>
-              </Col>
-              {stats.byDecision.map((item) => (
-                <Col key={item.decision} md={3}>
-                  <Card className="text-center stat-card">
-                    <Card.Body>
-                      <div className={`stat-icon ${item.decision.toLowerCase().replace(' ', '-')}`}>
-                        <i className={getDecisionIcon(item.decision)}></i>
-                      </div>
-                      <h4 className="stat-number">{item.count}</h4>
-                      <p className="stat-label">{item.decision}</p>
-                    </Card.Body>
-                  </Card>
-                </Col>
-              ))}
-            </Row>
-          )}
+
 
           {/* Search and Filter Section */}
           <Card className="shadow-sm mb-3 search-filter-card">
@@ -300,7 +278,7 @@ const Evaluations = () => {
                             >
                               <i className="bi bi-eye"></i>
                             </Button>
-                            {(user.user_id === evaluation.evaluator_id || user.role === 'Admin') && (
+                            {!isExtensionCoordinator && (user.user_id === evaluation.evaluator_id || user.role === 'Admin') && (
                               <Button
                                 as={Link}
                                 to={`/evaluations/${evaluation.eval_id}/edit`}
@@ -311,7 +289,7 @@ const Evaluations = () => {
                                 <i className="bi bi-pencil"></i>
                               </Button>
                             )}
-                            {user.role === 'Admin' && (
+                            {!isExtensionCoordinator && user.role === 'Admin' && (
                               <Button
                                 variant="outline-danger"
                                 size="sm"
@@ -341,7 +319,7 @@ const Evaluations = () => {
           </Card>
         </Col>
       </Row>
-    </Container>
+    </div>
   );
 };
 

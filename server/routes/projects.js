@@ -120,6 +120,10 @@ router.post(
         title,
         location,
         duration,
+        start_date,
+        end_date,
+        start_time,
+        end_time,
         extension_agenda = [],
         sdg_goals = [],
         offices_involved,
@@ -140,51 +144,52 @@ router.post(
         sustainability_plan
       } = req.body;
 
-      const [result] = await db.promise.query(
-        `INSERT INTO projects (
-          request_type, initiative_type, title, location, duration,
-          extension_agenda, sdg_goals, offices_involved, programs_involved,
-          project_leaders, partner_agencies, beneficiaries, total_cost,
-          fund_source, rationale, objectives_general, objectives_specific,
-          expected_output, strategies_methods, financial_plan_details,
-          functional_relationships, monitoring_evaluation, sustainability_plan,
-          coordinator_id, status, date_submitted, last_updated
-        ) VALUES (
-          ?, ?, ?, ?, ?,
-          ?, ?, ?, ?,
-          ?, ?, ?, ?,
-          ?, ?, ?, ?,
-          ?, ?, ?,
-          ?, ?, ?,
-          ?, 'Pending', NOW(), NOW()
-        )`,
-        [
-          request_type || null,
-          initiative_type || null,
-          title,
-          location || null,
-          duration || null,
-          Array.isArray(extension_agenda) ? JSON.stringify(extension_agenda) : (extension_agenda || null),
-          Array.isArray(sdg_goals) ? JSON.stringify(sdg_goals) : (sdg_goals || null),
-          offices_involved || null,
-          programs_involved || null,
-          project_leaders || null,
-          partner_agencies || null,
-          beneficiaries || null,
-          total_cost || null,
-          Array.isArray(fund_source) ? JSON.stringify(fund_source) : (fund_source || null),
-          rationale || null,
-          objectives_general || null,
-          objectives_specific || null,
-          expected_output || null,
-          strategies_methods || null,
-          financial_plan_details || null,
-          functional_relationships || null,
-          monitoring_evaluation || null,
-          sustainability_plan || null,
-          requester.id
-        ]
-      );
+      const insertParams = [
+        request_type || null,
+        initiative_type || null,
+        title,
+        location || null,
+        duration || null,
+        Array.isArray(extension_agenda) ? JSON.stringify(extension_agenda) : (extension_agenda || null),
+        Array.isArray(sdg_goals) ? JSON.stringify(sdg_goals) : (sdg_goals || null),
+        offices_involved || null,
+        programs_involved || null,
+        project_leaders || null,
+        partner_agencies || null,
+        beneficiaries || null,
+        requester.id,
+        null, // remarks - initially null for new proposals
+        start_date || null,
+        end_date || null,
+        start_time || null,
+        end_time || null
+      ];
+
+      let result;
+      try {
+        [result] = await db.promise.query(
+          `INSERT INTO projects (
+            request_type, initiative_type, title, location, duration,
+            extension_agenda, sdg_goals, offices_involved, programs_involved,
+            project_leaders, partner_agencies, beneficiaries,
+            coordinator_id, remarks, status, date_submitted, last_updated,
+            start_date, end_date, start_time, end_time
+          ) VALUES (
+            ?, ?, ?, ?, ?,
+            ?, ?, ?, ?,
+            ?, ?, ?, ?,
+            ?, 'Pending', NOW(), NOW(),
+            ?, ?, ?, ?
+          )`,
+          insertParams
+        );
+      } catch (insertError) {
+        console.error('❌ Database insertion error:', insertError.message);
+        return res.status(500).json({ 
+          error: 'Failed to create project', 
+          details: insertError.message
+        });
+      }
 
       const [created] = await db.promise.query(
         `SELECT p.*, u.fullname AS coordinator_fullname
@@ -275,6 +280,55 @@ router.post('/:id/decision', [
       [decision, decision === 'Rejected' ? remarks : project.remarks, req.params.id]
     );
 
+    // If project is approved and has date/time information, create calendar event
+    if (decision === 'Approved') {
+      try {
+        // Parse start_date, end_date, start_time, end_time from project data if available
+        let startDate = null;
+        let endDate = null;
+        let startTime = null;
+        let endTime = null;
+        
+        // Check if the project has these fields (they might be in JSON format or separate fields)
+        if (project.start_date) {
+          startDate = project.start_date;
+        }
+        if (project.end_date) {
+          endDate = project.end_date;
+        }
+        if (project.start_time) {
+          startTime = project.start_time;
+        }
+        if (project.end_time) {
+          endTime = project.end_time;
+        }
+        
+        // If we have at least a start date, create calendar event
+        if (startDate) {
+          await db.promise.query(
+            `INSERT INTO calendar_events 
+             (project_id, title, location, start_date, end_date, start_time, end_time, description, event_type) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              project.project_id,
+              project.title,
+              project.location || '',
+              startDate,
+              endDate,
+              startTime,
+              endTime,
+              `${project.initiative_type || 'Project'}: ${project.title}`,
+              project.initiative_type || 'Project'
+            ]
+          );
+          console.log(`Calendar event created automatically for approved project: ${project.project_id}`);
+        }
+      } catch (calendarError) {
+        // Don't fail the approval if calendar event creation fails
+        console.error('Failed to create calendar event for approved project:', calendarError.message);
+      }
+    }
+
     // Notify coordinator about decision
     if (project.coordinator_id && project.coordinator_id !== requester.id) {
       const message = decision === 'Approved'
@@ -326,10 +380,10 @@ router.put(
       }
 
       const fields = [
-        'request_type','initiative_type','title','location','duration','offices_involved','programs_involved',
-        'project_leaders','partner_agencies','beneficiaries','total_cost','rationale','objectives_general',
-        'objectives_specific','expected_output','strategies_methods','financial_plan_details','functional_relationships',
-        'monitoring_evaluation','sustainability_plan'
+        'request_type','initiative_type','title','location','duration','start_date','end_date','start_time','end_time',
+        'offices_involved','programs_involved','project_leaders','partner_agencies','beneficiaries','total_cost',
+        'rationale','objectives_general','objectives_specific','expected_output','strategies_methods',
+        'financial_plan_details','functional_relationships','monitoring_evaluation','sustainability_plan'
       ];
 
       const toUpdate = {};
@@ -436,6 +490,81 @@ router.put('/:id/complete', auth, async (req, res) => {
     );
 
     res.json(updated[0]);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// @route   GET /api/projects/stats/dashboard
+// @desc    Get project statistics for dashboard (Extension Coordinators get status breakdown)
+// @access  Private
+router.get('/stats/dashboard', auth, async (req, res) => {
+  try {
+    const requester = req.user.user;
+    const params = [];
+    let where = [];
+
+    // Extension Coordinators can only view their own projects
+    if (requester.role === 'Extension Coordinator') {
+      where.push('p.coordinator_id = ?');
+      params.push(requester.id);
+    }
+
+    // For Extension Coordinators, get count by status
+    if (requester.role === 'Extension Coordinator') {
+      let sql = `
+        SELECT 
+          p.status,
+          COUNT(*) as count
+        FROM projects p
+      `;
+
+      if (where.length > 0) {
+        sql += ' WHERE ' + where.join(' AND ');
+      }
+
+      sql += ' GROUP BY p.status ORDER BY p.status';
+
+      const [rows] = await db.promise.query(sql, params);
+      
+      // Ensure we have all statuses represented
+      const statusCounts = {
+        'Pending': 0,
+        'Approved': 0,
+        'Rejected': 0,
+        'Completed': 0
+      };
+
+      rows.forEach(row => {
+        if (statusCounts.hasOwnProperty(row.status)) {
+          statusCounts[row.status] = row.count;
+        }
+      });
+
+      res.json({
+        role: 'Extension Coordinator',
+        projectsByStatus: statusCounts,
+        totalProjects: Object.values(statusCounts).reduce((sum, count) => sum + count, 0)
+      });
+    } else {
+      // For other roles, get total project count
+      let sql = `
+        SELECT COUNT(*) as total
+        FROM projects p
+      `;
+
+      if (where.length > 0) {
+        sql += ' WHERE ' + where.join(' AND ');
+      }
+
+      const [rows] = await db.promise.query(sql, params);
+      
+      res.json({
+        role: requester.role,
+        totalProjects: rows[0].total
+      });
+    }
   } catch (err) {
     console.error(err.message);
     res.status(500).json({ error: 'Server error' });

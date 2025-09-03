@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Navbar, Container, Button, OverlayTrigger, Tooltip, Dropdown } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+
 import axios from 'axios';
 import './Navbar.css';
 
@@ -10,6 +11,7 @@ const NavigationBar = () => {
   const navigate = useNavigate();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [notifications, setNotifications] = useState([]);
+
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -90,23 +92,14 @@ const NavigationBar = () => {
 
             <OverlayTrigger
               placement="bottom"
-              overlay={<Tooltip id="calendar-tooltip">Calendar</Tooltip>}
+              overlay={<Tooltip id="calendar-tooltip">Project Calendar</Tooltip>}
             >
               <Button variant="link" className="icon-button" as={Link} to="/calendar">
                 <i className="bi bi-calendar-event"></i>
               </Button>
             </OverlayTrigger>
 
-            {user && ['Extension Head', 'GAD', 'Vice Chancellor', 'Chancellor', 'Admin'].includes(user.role) && (
-              <OverlayTrigger
-                placement="bottom"
-                overlay={<Tooltip id="evaluations-tooltip">Evaluations</Tooltip>}
-              >
-                <Button variant="link" className="icon-button" as={Link} to="/evaluations">
-                  <i className="bi bi-clipboard-check"></i>
-                </Button>
-              </OverlayTrigger>
-            )}
+
 
             <Dropdown align="end">
               <OverlayTrigger placement="bottom" overlay={<Tooltip id="notification-tooltip">Notifications</Tooltip>}>

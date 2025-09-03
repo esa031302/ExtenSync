@@ -78,7 +78,7 @@ const Projects = () => {
   const hasActiveFilters = searchTerm.trim() || statusFilter !== 'All';
 
   return (
-    <Container className="py-4">
+    <div className="py-4">
       <Row>
         <Col>
           <div className="d-flex justify-content-between align-items-center mb-3">
@@ -251,7 +251,7 @@ const Projects = () => {
           </Card>
         </Col>
       </Row>
-    </Container>
+    </div>
   );
 };
 

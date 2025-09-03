@@ -10,6 +10,12 @@ const Sidebar = () => {
 
   const navItems = [
     {
+      id: 'dashboard',
+      label: 'Dashboard',
+      icon: 'bi-house-fill',
+      path: '/dashboard'
+    },
+    {
       id: 'projects',
       label: 'Projects',
       icon: 'bi-diagram-3-fill',

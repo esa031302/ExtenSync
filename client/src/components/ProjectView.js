@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import { Container, Card, Row, Col, Badge, Button, Modal, Form, Alert } from 'react-bootstrap';
-import { useAuth } from '../context/AuthContext';
 
 const ProjectView = () => {
   const { id } = useParams();
@@ -85,7 +85,25 @@ const ProjectView = () => {
           </Row>
           <Row className="mt-2">
             <Col md={6}><strong>Location:</strong> {project.location || '—'}</Col>
-            <Col md={6}><strong>Duration:</strong> {project.duration || '—'}</Col>
+            <Col md={6}>
+              <strong>Duration:</strong> 
+              {project.start_date ? (
+                <div>
+                  <div>
+                    <strong>Start:</strong> {new Date(project.start_date).toLocaleDateString()}
+                    {project.start_time && ` at ${project.start_time}`}
+                  </div>
+                  {project.end_date && (
+                    <div>
+                      <strong>End:</strong> {new Date(project.end_date).toLocaleDateString()}
+                      {project.end_time && ` at ${project.end_time}`}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                '—'
+              )}
+            </Col>
           </Row>
           <hr />
           <Row>

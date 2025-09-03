@@ -54,7 +54,10 @@ const ProjectProposal = () => {
     initiative_type: '',
     title: '',
     location: '',
-    duration: '',
+    start_date: '',
+    end_date: '',
+    start_time: '',
+    end_time: '',
     extension_agenda: [],
     sdg_goals: [],
     offices_involved: '',
@@ -154,10 +157,54 @@ const ProjectProposal = () => {
                     <Form.Control name="location" value={form.location} onChange={handleChange} />
                   </Form.Group>
 
-                  {/* Duration */}
+                  {/* Duration - Enhanced with better date/time inputs */}
                   <Form.Group className="mb-3">
                     <Form.Label>Duration (Date and Time)</Form.Label>
-                    <Form.Control name="duration" value={form.duration} onChange={handleChange} />
+                    <Row>
+                      <Col md={6}>
+                        <Form.Label className="small text-muted">Start Date</Form.Label>
+                        <Form.Control 
+                          type="date" 
+                          name="start_date" 
+                          value={form.start_date || ''} 
+                          onChange={handleChange}
+                          placeholder="Start Date"
+                        />
+                      </Col>
+                      <Col md={6}>
+                        <Form.Label className="small text-muted">End Date (Optional)</Form.Label>
+                        <Form.Control 
+                          type="date" 
+                          name="end_date" 
+                          value={form.end_date || ''} 
+                          onChange={handleChange}
+                          placeholder="End Date"
+                        />
+                      </Col>
+                    </Row>
+                    <Row className="mt-2">
+                      <Col md={6}>
+                        <Form.Label className="small text-muted">Start Time (Optional)</Form.Label>
+                        <Form.Control 
+                          type="time" 
+                          name="start_time" 
+                          value={form.start_time || ''} 
+                          onChange={handleChange}
+                          placeholder="Start Time"
+                        />
+                      </Col>
+                      <Col md={6}>
+                        <Form.Label className="small text-muted">End Time (Optional)</Form.Label>
+                        <Form.Control 
+                          type="time" 
+                          name="end_time" 
+                          value={form.end_time || ''} 
+                          onChange={handleChange}
+                          placeholder="End Time"
+                        />
+                      </Col>
+                    </Row>
+
                   </Form.Group>
 
                   {/* Extension Agenda */}

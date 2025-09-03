@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import Layout from './components/Layout';
 import Navbar from './components/Navbar';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
@@ -15,6 +16,7 @@ import Documents from './components/Documents';
 import SystemLogs from './components/SystemLogs';
 import Conversations from './components/Conversations';
 import Calendar from './components/Calendar';
+
 import Evaluations from './components/Evaluations';
 import EvaluationForm from './components/EvaluationForm';
 
@@ -40,17 +42,18 @@ function AppContent() {
     <div className="App">
       {user && <Navbar />}
       <main className="bg-light min-vh-100">
-        <Routes>
-          <Route path="/" element={<Login />} />
-          <Route path="/login" element={<Login />} />
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          />
+        <Layout>
+          <Routes>
+            <Route path="/" element={<Login />} />
+            <Route path="/login" element={<Login />} />
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
           <Route
             path="/profile"
             element={
@@ -163,7 +166,8 @@ function AppContent() {
                   </ProtectedRoute>
                 }
               />
-        </Routes>
+          </Routes>
+        </Layout>
       </main>
     </div>
   );

@@ -75,6 +75,7 @@ app.use('/api/documents', documentRoutes);
 app.use('/api/logs', logRoutes);
 app.use('/api/conversations', conversationRoutes);
 app.use('/api/evaluations', evaluationRoutes);
+app.use('/api/calendar', require('./routes/calendar'));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

@@ -10,9 +10,10 @@ const promisePool = require('../config/database').promise;
 router.get('/', auth, async (req, res) => {
   let connection;
   try {
+    const requester = req.user.user;
     connection = await promisePool.getConnection();
     
-    const query = `
+    let query = `
       SELECT 
         e.eval_id,
         e.project_id,
@@ -26,15 +27,25 @@ router.get('/', auth, async (req, res) => {
         e.created_at,
         p.title as project_title,
         p.status as project_status,
+        p.coordinator_id,
         u.fullname as evaluator_name,
         u.role as evaluator_role
       FROM evaluations e
       JOIN projects p ON e.project_id = p.project_id
       JOIN users u ON e.evaluator_id = u.user_id
-      ORDER BY e.created_at DESC
     `;
     
-    const [evaluations] = await connection.execute(query);
+    const params = [];
+    
+    // Extension Coordinators can only view evaluations for their own projects
+    if (requester.role === 'Extension Coordinator') {
+      query += ' WHERE p.coordinator_id = ?';
+      params.push(requester.id);
+    }
+    
+    query += ' ORDER BY e.created_at DESC';
+    
+    const [evaluations] = await connection.execute(query, params);
     
     res.json(evaluations);
   } catch (error) {
@@ -126,6 +137,7 @@ router.get('/:evalId', auth, async (req, res) => {
   let connection;
   try {
     const { evalId } = req.params;
+    const requester = req.user.user;
     connection = await promisePool.getConnection();
     
     const query = `
@@ -142,6 +154,7 @@ router.get('/:evalId', auth, async (req, res) => {
         e.created_at,
         p.title as project_title,
         p.status as project_status,
+        p.coordinator_id,
         u.fullname as evaluator_name,
         u.role as evaluator_role
       FROM evaluations e
@@ -156,7 +169,14 @@ router.get('/:evalId', auth, async (req, res) => {
       return res.status(404).json({ error: 'Evaluation not found' });
     }
     
-    res.json(evaluations[0]);
+    const evaluation = evaluations[0];
+    
+    // Extension Coordinators can only view evaluations for their own projects
+    if (requester.role === 'Extension Coordinator' && evaluation.coordinator_id !== requester.id) {
+      return res.status(403).json({ error: 'Access denied. You can only view evaluations for your own projects.' });
+    }
+    
+    res.json(evaluation);
   } catch (error) {
     console.error('Error fetching evaluation:', error);
     res.status(500).json({ error: 'Failed to fetch evaluation' });
@@ -409,41 +429,70 @@ router.delete('/:evalId', auth, async (req, res) => {
 router.get('/stats/overview', auth, async (req, res) => {
   let connection;
   try {
+    const requester = req.user.user;
     connection = await promisePool.getConnection();
     
+    let whereClause = '';
+    const params = [];
+    
+    // Extension Coordinators can only see stats for evaluations of their own projects
+    if (requester.role === 'Extension Coordinator') {
+      whereClause = ' WHERE p.coordinator_id = ?';
+      params.push(requester.id);
+    }
+    
     // Get total evaluations
-    const [totalEvals] = await connection.execute('SELECT COUNT(*) as total FROM evaluations');
+    const totalQuery = `
+      SELECT COUNT(*) as total 
+      FROM evaluations e 
+      JOIN projects p ON e.project_id = p.project_id
+      ${whereClause}
+    `;
+    const [totalEvals] = await connection.execute(totalQuery, params);
     
     // Get evaluations by decision
-    const [decisionStats] = await connection.execute(`
+    const decisionQuery = `
       SELECT decision, COUNT(*) as count 
-      FROM evaluations 
+      FROM evaluations e
+      JOIN projects p ON e.project_id = p.project_id
+      ${whereClause}
       GROUP BY decision
-    `);
+    `;
+    const [decisionStats] = await connection.execute(decisionQuery, params);
     
     // Get evaluations by month (last 6 months)
-    const [monthlyStats] = await connection.execute(`
+    const monthlyQuery = `
       SELECT 
-        DATE_FORMAT(created_at, '%Y-%m') as month,
+        DATE_FORMAT(e.created_at, '%Y-%m') as month,
         COUNT(*) as count
-      FROM evaluations 
-      WHERE created_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
-      GROUP BY DATE_FORMAT(created_at, '%Y-%m')
+      FROM evaluations e
+      JOIN projects p ON e.project_id = p.project_id
+      ${whereClause}
+      ${whereClause ? 'AND' : 'WHERE'} e.created_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
+      GROUP BY DATE_FORMAT(e.created_at, '%Y-%m')
       ORDER BY month DESC
-    `);
+    `;
+    const monthlyParams = [...params];
+    if (requester.role === 'Extension Coordinator') {
+      monthlyParams.push(requester.id);
+    }
+    const [monthlyStats] = await connection.execute(monthlyQuery, monthlyParams);
     
     // Get top evaluators
-    const [topEvaluators] = await connection.execute(`
+    const evaluatorsQuery = `
       SELECT 
         u.fullname,
         u.role,
         COUNT(*) as evaluation_count
       FROM evaluations e
+      JOIN projects p ON e.project_id = p.project_id
       JOIN users u ON e.evaluator_id = u.user_id
+      ${whereClause}
       GROUP BY e.evaluator_id
       ORDER BY evaluation_count DESC
       LIMIT 5
-    `);
+    `;
+    const [topEvaluators] = await connection.execute(evaluatorsQuery, params);
     
     res.json({
       total: totalEvals[0].total,
