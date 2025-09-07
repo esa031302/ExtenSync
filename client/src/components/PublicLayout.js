@@ -53,12 +53,12 @@ const PublicLayout = ({ children }) => {
       {/* Public Navigation */}
       <Navbar bg="light" variant="light" expand="lg" className="public-navbar shadow-sm">
         <Container>
-          <Navbar.Brand as={Link} to="/portal" className="d-flex align-items-center">
+          <Navbar.Brand as={Link} to="/portal" className="d-flex align-items-center logo-section">
             <img 
               src="/extensynclogo.png" 
               alt="ExtenSync Logo" 
               height="75" 
-              className="me-2"
+              className="me-2 logo-image"
             />
           </Navbar.Brand>
           
@@ -123,6 +123,15 @@ const PublicLayout = ({ children }) => {
                       <i className="bi bi-chat-heart me-2"></i>
                       My Feedback
                     </Dropdown.Item>
+                    {user.role !== 'Beneficiary' && (
+                      <>
+                        <Dropdown.Divider />
+                        <Dropdown.Item as={Link} to="/dashboard" className="epms-dropdown-item">
+                          <i className="bi bi-speedometer2 me-2"></i>
+                          Access EPMS
+                        </Dropdown.Item>
+                      </>
+                    )}
                     <Dropdown.Divider />
                     <Dropdown.Item onClick={handleLogout} className="text-danger">
                       <i className="bi bi-box-arrow-right me-2"></i>

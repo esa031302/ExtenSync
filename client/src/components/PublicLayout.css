@@ -9,6 +9,39 @@
   border-bottom: 1px solid #e9ecef;
 }
 
+.logo-section {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  color: #dc3545 !important;
+  font-weight: bold;
+  font-size: 1.2rem;
+}
+
+.logo-section:hover {
+  color: #c82333 !important;
+  text-decoration: none;
+}
+
+.logo-image {
+  filter: brightness(0) saturate(100%) invert(27%) sepia(51%) saturate(2878%) hue-rotate(346deg) brightness(104%) contrast(97%);
+  transition: filter 0.2s ease;
+}
+
+.logo-section:hover .logo-image {
+  filter: brightness(0) saturate(100%) invert(20%) sepia(100%) saturate(2878%) hue-rotate(346deg) brightness(80%) contrast(97%);
+}
+
+.epms-dropdown-item {
+  padding: 0.75rem 1rem;
+  transition: all 0.3s ease;
+}
+
+.epms-dropdown-item:hover {
+  background-color: #f8f9fa;
+  color: #dc3545;
+}
+
 .brand-title {
   font-size: 1.5rem;
   font-weight: 700;
