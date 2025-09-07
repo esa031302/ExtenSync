@@ -169,17 +169,75 @@ const logActions = {
     next();
   },
   logout: (req, res, next) => logger('LOGOUT', 'auth', null, 'User logged out')(req, res, next),
+  
+  // User actions
   createUser: (req, res, next) => logger('CREATE', 'user', null, 'Created new user account', { email: req.body.email })(req, res, next),
   updateUser: (req, res, next) => logger('UPDATE', 'user', req.params.id, 'Updated user profile information')(req, res, next),
   deleteUser: (req, res, next) => logger('DELETE', 'user', req.params.id, 'Deleted user account')(req, res, next),
+  
+  // Project lifecycle actions
   createProject: (req, res, next) => logger('CREATE', 'project', null, 'Created new extension project', { title: req.body.title })(req, res, next),
   updateProject: (req, res, next) => logger('UPDATE', 'project', req.params.id, 'Updated project information')(req, res, next),
   deleteProject: (req, res, next) => logger('DELETE', 'project', req.params.id, 'Deleted project')(req, res, next),
-  evaluateProject: (req, res, next) => logger('EVALUATE', 'project', req.params.id, 'Evaluated project proposal', { decision: req.body.decision })(req, res, next),
+  startProject: (req, res, next) => logger('START', 'project', req.params.id, 'Started project execution', { status: 'On-Going' })(req, res, next),
+  completeProject: (req, res, next) => logger('COMPLETE', 'project', req.params.id, 'Completed project execution', { 
+    status: 'Completed',
+    early_completion: req.body.early_completion_reason ? true : false,
+    early_completion_reason: req.body.early_completion_reason || null
+  })(req, res, next),
+  approveProject: (req, res, next) => logger('APPROVE', 'project', req.params.id, 'Approved project proposal', { 
+    decision: req.body.decision,
+    remarks: req.body.remarks 
+  })(req, res, next),
+  rejectProject: (req, res, next) => logger('REJECT', 'project', req.params.id, 'Rejected project proposal', { 
+    decision: req.body.decision,
+    remarks: req.body.remarks 
+  })(req, res, next),
+  evaluateProject: (req, res, next) => logger('EVALUATE', 'project', req.params.id, 'Evaluated project proposal', { 
+    decision: req.body.decision,
+    remarks: req.body.remarks 
+  })(req, res, next),
+  reproposeProject: (req, res, next) => logger('REPROPOSE', 'project', req.params.id, 'Reproposed rejected project', { 
+    status: 'Pending',
+    previous_status: 'Rejected'
+  })(req, res, next),
+  
+  // Evaluation actions
+  createEvaluation: (req, res, next) => logger('CREATE', 'evaluation', null, 'Created project evaluation', { 
+    project_id: req.body.project_id,
+    decision: req.body.decision,
+    total_score: req.body.total_score,
+    score_percentage: req.body.score_percentage
+  })(req, res, next),
+  updateEvaluation: (req, res, next) => logger('UPDATE', 'evaluation', req.params.evalId, 'Updated project evaluation', { 
+    decision: req.body.decision,
+    total_score: req.body.total_score,
+    score_percentage: req.body.score_percentage
+  })(req, res, next),
+  deleteEvaluation: (req, res, next) => logger('DELETE', 'evaluation', req.params.evalId, 'Deleted project evaluation')(req, res, next),
+  
+  // Document actions
   uploadDocument: (req, res, next) => logger('UPLOAD', 'document', null, 'Uploaded project document', { filename: req.file?.originalname })(req, res, next),
   deleteDocument: (req, res, next) => logger('DELETE', 'document', req.params.id, 'Deleted document')(req, res, next),
+  
+  // Notification actions
   createNotification: (req, res, next) => logger('CREATE', 'notification', null, 'Created notification')(req, res, next),
   updateNotification: (req, res, next) => logger('UPDATE', 'notification', req.params.id, 'Updated notification status')(req, res, next),
+  
+  // Report actions
+  createReport: (req, res, next) => logger('CREATE', 'report', null, 'Created project report', { 
+    project_id: req.body.project_id,
+    type: req.body.type,
+    title: req.body.title
+  })(req, res, next),
+  updateReport: (req, res, next) => logger('UPDATE', 'report', req.params.id, 'Updated project report', { 
+    type: req.body.type,
+    title: req.body.title,
+    status: req.body.status
+  })(req, res, next),
+  deleteReport: (req, res, next) => logger('DELETE', 'report', req.params.id, 'Deleted project report')(req, res, next),
+  
+  // General purpose action
   systemAction: (action, entityType, entityId, description, additionalData) => 
     (req, res, next) => logger(action, entityType, entityId, description, additionalData)(req, res, next)
 };

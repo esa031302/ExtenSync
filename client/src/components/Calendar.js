@@ -451,7 +451,7 @@ const Calendar = () => {
                                   <div className="event-meta">
                                     <Badge bg="success" className="me-2">
                                       <i className="bi bi-diagram-3 me-1"></i>
-                                      {event.event_type}
+                                      {event.event_type.replace(/_start|_end/g, '').charAt(0).toUpperCase() + event.event_type.replace(/_start|_end/g, '').slice(1)}
                                     </Badge>
                                     {event.location && (
                                       <span className="text-muted me-3">

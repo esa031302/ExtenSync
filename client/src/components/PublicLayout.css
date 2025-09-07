@@ -1,0 +1,137 @@
+.public-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.public-navbar {
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%) !important;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.brand-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #dc3545;
+  line-height: 1;
+}
+
+.brand-subtitle {
+  font-size: 0.875rem;
+  color: #6c757d;
+  line-height: 1;
+}
+
+.navbar-nav .nav-link {
+  color: #495057 !important;
+  font-weight: 500;
+  padding: 0.75rem 1rem !important;
+  border-radius: 8px;
+  margin: 0 0.25rem;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.navbar-nav .nav-link:hover {
+  color: #dc3545 !important;
+  background-color: transparent !important;
+}
+
+.navbar-nav .nav-link.active {
+  background-color: transparent;
+  color: #dc3545 !important;
+  font-weight: 600;
+  box-shadow: none;
+}
+
+.navbar-nav .nav-link.login-link {
+  background-color: transparent;
+  color: #495057 !important;
+  border-radius: 8px;
+  margin-left: 1rem;
+  font-weight: 500;
+  border: none;
+}
+
+.navbar-nav .nav-link.login-link:hover {
+  background-color: transparent;
+  color: #dc3545 !important;
+  box-shadow: none;
+}
+
+.profile-dropdown {
+  border-radius: 20px;
+  padding: 0.5rem 1rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.profile-dropdown:hover {
+  box-shadow: none;
+}
+
+.dropdown-menu {
+  border-radius: 10px;
+  border: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  margin-top: 0.5rem;
+}
+
+.dropdown-item {
+  padding: 0.75rem 1rem;
+  transition: all 0.3s ease;
+}
+
+.dropdown-item:hover {
+  background-color: #f8f9fa;
+  color: #dc3545;
+}
+
+.dropdown-item.text-danger:hover {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.public-main {
+  flex: 1;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+}
+
+.public-footer {
+  background: linear-gradient(135deg, #212529 0%, #343a40 100%) !important;
+  margin-top: auto;
+}
+
+.public-footer h5,
+.public-footer h6 {
+  color: #ffffff;
+}
+
+.public-footer .text-muted {
+  color: #adb5bd !important;
+}
+
+.public-footer a:hover {
+  color: #dc3545 !important;
+  text-decoration: underline !important;
+}
+
+@media (max-width: 768px) {
+  .brand-title {
+    font-size: 1.25rem;
+  }
+  
+  .brand-subtitle {
+    font-size: 0.75rem;
+  }
+  
+  .navbar-nav .nav-link {
+    padding: 0.5rem 0.75rem !important;
+    margin: 0.25rem 0;
+  }
+  
+  .navbar-nav .nav-link.login-link {
+    margin-left: 0;
+    margin-top: 0.5rem;
+  }
+}

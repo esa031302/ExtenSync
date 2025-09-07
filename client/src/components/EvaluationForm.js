@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Form, Button, Alert, Badge, Table } from 'react-bootstrap';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { NotificationMessages } from '../hooks/useNotification';
 import axios from 'axios';
 import './EvaluationForm.css';
 
@@ -68,12 +69,23 @@ const EvaluationForm = () => {
       setLoading(true);
       const { data } = await axios.get(`/evaluations/${id}`);
       
+      // Parse rubric_scores if it's a string
+      let parsedRubricScores = data.rubric_scores;
+      if (typeof data.rubric_scores === 'string') {
+        try {
+          parsedRubricScores = JSON.parse(data.rubric_scores);
+        } catch (error) {
+          console.error('Error parsing rubric_scores:', error);
+          parsedRubricScores = evaluationData.rubric_scores;
+        }
+      }
+      
       // Set form data
       setEvaluationData({
         project_id: data.project_id,
         feedback: data.feedback,
         decision: data.decision,
-        rubric_scores: data.rubric_scores || evaluationData.rubric_scores
+        rubric_scores: parsedRubricScores || evaluationData.rubric_scores
       });
       
       // Set selected project
@@ -111,21 +123,32 @@ const EvaluationForm = () => {
    };
 
   const calculateTotalScore = () => {
+    if (!evaluationData.rubric_scores || typeof evaluationData.rubric_scores !== 'object') {
+      return 0;
+    }
     return Object.values(evaluationData.rubric_scores).reduce((total, criterion) => {
-      return total + (criterion.score || 0);
+      const score = parseInt(criterion?.score) || 0;
+      return total + score;
     }, 0);
   };
 
   const calculateMaxScore = () => {
+    if (!evaluationData.rubric_scores || typeof evaluationData.rubric_scores !== 'object') {
+      return 100;
+    }
     return Object.values(evaluationData.rubric_scores).reduce((total, criterion) => {
-      return total + criterion.maxPoints;
+      const maxPoints = parseInt(criterion?.maxPoints) || 0;
+      return total + maxPoints;
     }, 0);
   };
 
   const getScorePercentage = () => {
     const total = calculateTotalScore();
     const max = calculateMaxScore();
-    return max > 0 ? Math.round((total / max) * 100) : 0;
+    if (max === 0 || isNaN(total) || isNaN(max)) {
+      return 0;
+    }
+    return Math.round((total / max) * 100);
   };
 
   const getDecisionFromScore = () => {
@@ -176,11 +199,11 @@ const EvaluationForm = () => {
       if (id) {
         // Update existing evaluation
         await axios.put(`http://localhost:5000/api/evaluations/${id}`, submitData);
-        setSuccess('Evaluation updated successfully!');
+        setSuccess(NotificationMessages.EVALUATION_UPDATED);
       } else {
         // Create new evaluation
         await axios.post('http://localhost:5000/api/evaluations', submitData);
-        setSuccess('Evaluation submitted successfully!');
+        setSuccess(NotificationMessages.EVALUATION_CREATED);
       }
 
       setTimeout(() => {

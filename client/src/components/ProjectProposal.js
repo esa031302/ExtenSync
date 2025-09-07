@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Container, Row, Col, Card, Form, Button, Alert } from 'react-bootstrap';
+import { Container, Row, Col, Card, Form, Button, Alert, Modal, Dropdown } from 'react-bootstrap';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { NotificationMessages } from '../hooks/useNotification';
 
 const EXTENSION_AGENDAS = [
   'BatStateU Inclusive Social Innovation for Regional Growth (BISIG) Program',
@@ -48,6 +49,7 @@ const ProjectProposal = () => {
     }
   }, [authLoading, user, navigate]);
   const [loading, setLoading] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [fundSourceOther, setFundSourceOther] = useState('');
   const [form, setForm] = useState({
     request_type: '',
@@ -58,7 +60,7 @@ const ProjectProposal = () => {
     end_date: '',
     start_time: '',
     end_time: '',
-    extension_agenda: [],
+    extension_agenda: '',
     sdg_goals: [],
     offices_involved: '',
     programs_involved: '',
@@ -77,6 +79,9 @@ const ProjectProposal = () => {
     monitoring_evaluation: '',
     sustainability_plan: ''
   });
+  const [participantsOptions, setParticipantsOptions] = useState([]);
+  const [participants, setParticipants] = useState([]);
+  const [roleFilter, setRoleFilter] = useState('All');
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -95,24 +100,64 @@ const ProjectProposal = () => {
     setFundSourceOther(e.target.value);
   };
 
-  const submit = async (e) => {
+  const handleSubmitClick = (e) => {
     e.preventDefault();
+    setShowConfirmModal(true);
+  };
+
+  // Load eligible participants
+  useEffect(() => {
+    const loadEligible = async () => {
+      try {
+        const { data } = await axios.get('/users/eligible-participants');
+        setParticipantsOptions(data);
+      } catch (err) {
+        // Non-blocking
+        console.error('Failed to load participants', err);
+      }
+    };
+    loadEligible();
+  }, []);
+
+  const toggleParticipant = (userId) => {
+    setParticipants((prev) => {
+      const set = new Set(prev);
+      if (set.has(userId)) set.delete(userId); else set.add(userId);
+      return Array.from(set);
+    });
+  };
+
+  const submit = async () => {
     setLoading(true);
     setError('');
+    setShowConfirmModal(false);
 
     try {
       const payload = { ...form };
+      if (participants.length > 0) {
+        payload.participants = participants;
+      }
+      
+      // Convert extension_agenda string to array for backend compatibility
+      if (form.extension_agenda) {
+        payload.extension_agenda = [form.extension_agenda];
+      }
+      
       if (form.fund_source.includes('Others') && fundSourceOther.trim()) {
         payload.fund_source = form.fund_source.map((fs) => fs === 'Others' ? `Others: ${fundSourceOther.trim()}` : fs);
       }
       await axios.post('/projects', payload);
-      navigate('/projects', { state: { success: 'Project proposed successfully' } });
+      navigate('/projects', { state: { success: NotificationMessages.PROJECT_CREATED } });
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to submit proposal');
+      setError(err.response?.data?.error || 'Failed to submit proposal. Please try again.');
     } finally {
       setLoading(false);
     }
   };
+
+  // Derived role options and filtered participants
+  const roleOptions = ['All', ...Array.from(new Set(participantsOptions.map((u) => u.role)))];
+  const filteredParticipantsOptions = participantsOptions.filter((u) => roleFilter === 'All' || u.role === roleFilter);
 
   return (
     <div className="bg-light min-vh-100 d-flex align-items-start pt-4">
@@ -125,7 +170,7 @@ const ProjectProposal = () => {
                 {error && (
                   <Alert variant="danger" dismissible onClose={() => setError('')}>{error}</Alert>
                 )}
-                <Form onSubmit={submit}>
+                <Form onSubmit={handleSubmitClick}>
                   {/* Request Type */}
                   <Form.Group className="mb-3">
                     <Form.Label>Request Type</Form.Label>
@@ -151,6 +196,8 @@ const ProjectProposal = () => {
                     <Form.Control name="title" value={form.title} onChange={handleChange} required />
                   </Form.Group>
 
+                  {/* Participants dropdown - moved below Duration per request */}
+
                   {/* Location */}
                   <Form.Group className="mb-3">
                     <Form.Label>Location</Form.Label>
@@ -159,16 +206,17 @@ const ProjectProposal = () => {
 
                   {/* Duration - Enhanced with better date/time inputs */}
                   <Form.Group className="mb-3">
-                    <Form.Label>Duration (Date and Time)</Form.Label>
+                    <Form.Label>Duration (Date and Time) <span className="text-danger">*</span></Form.Label>
                     <Row>
                       <Col md={6}>
-                        <Form.Label className="small text-muted">Start Date</Form.Label>
+                        <Form.Label className="small text-muted">Start Date <span className="text-danger">*</span></Form.Label>
                         <Form.Control 
                           type="date" 
                           name="start_date" 
                           value={form.start_date || ''} 
                           onChange={handleChange}
                           placeholder="Start Date"
+                          required
                         />
                       </Col>
                       <Col md={6}>
@@ -207,11 +255,89 @@ const ProjectProposal = () => {
 
                   </Form.Group>
 
+                  {/* Participants */}
+                  <Form.Group className="mb-3">
+                    <Form.Label>Participants (Extension Coordinator and above)</Form.Label>
+                    <div className="d-flex align-items-center gap-2 mb-2">
+                      <Form.Select
+                        value={roleFilter}
+                        onChange={(e) => setRoleFilter(e.target.value)}
+                        style={{ maxWidth: 260 }}
+                      >
+                        {roleOptions.map((r) => (
+                          <option key={r} value={r}>{r === 'All' ? 'All Roles' : r}</option>
+                        ))}
+                      </Form.Select>
+                      <Dropdown autoClose="outside">
+                        <Dropdown.Toggle variant="outline-primary" id="participants-dropdown">
+                          Select Participants ({participants.length})
+                        </Dropdown.Toggle>
+                        <Dropdown.Menu style={{ maxHeight: 300, overflowY: 'auto', minWidth: 340 }}>
+                          {filteredParticipantsOptions.length === 0 && (
+                            <div className="px-3 py-2 text-muted">No users for selected role</div>
+                          )}
+                          {filteredParticipantsOptions.map((u) => {
+                            const checked = participants.includes(u.user_id);
+                            return (
+                              <div
+                                key={u.user_id}
+                                className="dropdown-item d-flex align-items-center"
+                                onClick={() => toggleParticipant(u.user_id)}
+                                onMouseDown={(e) => e.preventDefault()}
+                              >
+                                <Form.Check
+                                  type="checkbox"
+                                  className="me-2"
+                                  checked={checked}
+                                  onChange={(e) => {
+                                    e.stopPropagation();
+                                    toggleParticipant(u.user_id);
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                  style={{ transform: 'scale(1.2)', accentColor: '#0d6efd' }}
+                                  aria-label={`Select ${u.fullname}`}
+                                />
+                                <div>
+                                  <div>{u.fullname}</div>
+                                  <small className="text-muted">{u.role} • {u.department_college}</small>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </Dropdown.Menu>
+                      </Dropdown>
+                    </div>
+                    {participants.length > 0 && (
+                      <div className="d-flex flex-wrap gap-2">
+                        {participants.map((id) => {
+                          const user = participantsOptions.find((u) => u.user_id === id);
+                          if (!user) return null;
+                          return (
+                            <span key={id} className="badge bg-secondary">
+                              {user.fullname}
+                              <Button variant="link" className="p-0 ms-2 text-white" onClick={() => toggleParticipant(id)} aria-label="Remove participant">
+                                <i className="bi bi-x"></i>
+                              </Button>
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </Form.Group>
+
                   {/* Extension Agenda */}
                   <Form.Group className="mb-3">
                     <Form.Label>Type of Extension Service Agenda (Choose the MOST - only one)</Form.Label>
                     {EXTENSION_AGENDAS.map((agenda) => (
-                      <Form.Check key={agenda} type="checkbox" label={agenda} checked={form.extension_agenda.includes(agenda)} onChange={() => handleCheckboxGroup('extension_agenda', agenda)} />
+                      <Form.Check 
+                        key={agenda} 
+                        type="radio" 
+                        name="extension_agenda"
+                        label={agenda} 
+                        value={agenda}
+                        checked={form.extension_agenda === agenda} 
+                        onChange={handleChange} 
+                      />
                     ))}
                   </Form.Group>
 
@@ -299,6 +425,26 @@ const ProjectProposal = () => {
           </Col>
         </Row>
       </Container>
+
+      {/* Submit Confirmation Modal */}
+      <Modal show={showConfirmModal} onHide={() => setShowConfirmModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Confirm Project Submission</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <div className="text-center py-3">
+            <i className="bi bi-check-circle-fill text-success" style={{ fontSize: '3rem' }}></i>
+            <h5 className="mt-3 mb-2">Confirm Project Submission</h5>
+            <p className="text-muted">Are you sure that all fields are correct?</p>
+          </div>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowConfirmModal(false)}>Cancel</Button>
+          <Button variant="success" onClick={submit} disabled={loading}>
+            {loading ? 'Submitting...' : 'Submit Proposal'}
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 };

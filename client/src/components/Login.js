@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Form, Button, Alert } from 'react-bootstrap';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import './Login.css';
 
@@ -13,6 +13,7 @@ const Login = () => {
   const [error, setError] = useState('');
   const { login, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const handleChange = (e) => {
     setFormData({
@@ -26,10 +27,10 @@ const Login = () => {
     setLoading(true);
     setError('');
 
-    const result = await login(formData.email, formData.password);
+    const result = await login(formData.email, formData.password, 'employee');
     
     if (result.success) {
-      navigate('/dashboard');
+      // For employees, navigation will be handled by useEffect
     } else {
       setError(result.error);
     }
@@ -39,10 +40,24 @@ const Login = () => {
 
   // If already authenticated, redirect away from login
   useEffect(() => {
-    if (!authLoading && user) {
-      navigate('/dashboard');
+    if (!authLoading && user && user.role) {
+      if (user.role === 'Beneficiary') {
+        // Beneficiaries should be on the public portal
+        navigate('/portal');
+      } else {
+        // Employees (all non-beneficiary roles) always go to the dashboard
+        // Ignore any redirect param for employee login to avoid sending them to the portal
+        navigate('/dashboard');
+      }
     }
-  }, [authLoading, user, navigate]);
+  }, [authLoading, user, navigate, searchParams]);
+
+  // Show error if beneficiary tries to access employee login
+  useEffect(() => {
+    if (!authLoading && user && user.role === 'Beneficiary') {
+      setError('This login is for employees only. Please use the beneficiary login.');
+    }
+  }, [authLoading, user]);
 
   return (
     <div className="bg-light min-vh-100 d-flex align-items-center">

@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Container, Row, Col, Card, Table, Badge, Button, OverlayTrigger, Tooltip, Form, InputGroup } from 'react-bootstrap';
+import { Row, Col, Card, Table, Badge, Button, OverlayTrigger, Tooltip, Form, InputGroup, Modal, Alert } from 'react-bootstrap';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useNotification, NotificationMessages } from '../hooks/useNotification';
 import './Projects.css';
 
 const statusVariant = (status) => {
@@ -11,6 +12,8 @@ const statusVariant = (status) => {
       return 'success';
     case 'Rejected':
       return 'danger';
+    case 'On-Going':
+      return 'warning';
     case 'Completed':
       return 'info';
     default:
@@ -24,10 +27,108 @@ const Projects = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [showCompleteModal, setShowCompleteModal] = useState(false);
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [completionReason, setCompletionReason] = useState('');
+  const [isEarlyCompletion, setIsEarlyCompletion] = useState(false);
+  const [error, setError] = useState('');
+  const { notification, showSuccess, showError, dismiss } = useNotification();
   const { user } = useAuth();
+
   const canPropose = user && ['Extension Coordinator','Extension Head','GAD','Admin'].includes(user.role);
   const location = useLocation();
   const successMessage = location.state?.success;
+
+  // Helper function to check if current date allows starting a project
+  const canStartProject = (project) => {
+    if (!project.start_date) return true; // If no start date, can start anytime
+    const today = new Date();
+    const startDate = new Date(project.start_date);
+    today.setHours(0, 0, 0, 0);
+    startDate.setHours(0, 0, 0, 0);
+    return today >= startDate;
+  };
+
+  // Helper function to check if user can complete a project
+  const canCompleteProject = (project) => {
+    // Anyone can complete anytime - no date restrictions
+    return true;
+  };
+
+  // Handle starting a project
+  const handleStartProject = async (projectId) => {
+    if (!window.confirm('Start this project? This will change its status to On-Going.')) return;
+    try {
+      const { data } = await axios.put(`http://localhost:5000/api/projects/${projectId}/start`);
+      setProjects(prev => prev.map(row => 
+        row.project_id === projectId ? data : row
+      ));
+      showSuccess(NotificationMessages.PROJECT_STARTED);
+    } catch (error) {
+      console.error('Start project failed:', error);
+      const errorMsg = error.response?.data?.error || 'Failed to start project. Please try again.';
+      showError(errorMsg);
+    }
+  };
+
+  // Handle opening the complete project modal
+  const handleCompleteProject = (projectId) => {
+    const project = projects.find(p => p.project_id === projectId);
+    if (!project) {
+      setError('Project not found');
+      return;
+    }
+
+    // Check if completing early (before end date)
+    const today = new Date();
+    const endDate = new Date(project.end_date);
+    today.setHours(0, 0, 0, 0);
+    endDate.setHours(0, 0, 0, 0);
+    
+    const isEarly = project.end_date && today < endDate;
+    setSelectedProject(project);
+    setIsEarlyCompletion(isEarly);
+    setCompletionReason('');
+    setError('');
+    setShowCompleteModal(true);
+  };
+
+  // Handle submitting the completion
+  const submitCompletion = async () => {
+    try {
+      setError('');
+      
+      // Validate early completion reason if needed
+      if (isEarlyCompletion && !completionReason.trim()) {
+        setError('A reason is required for early completion.');
+        return;
+      }
+      
+      const requestBody = {};
+      if (isEarlyCompletion && completionReason.trim()) {
+        requestBody.early_completion_reason = completionReason.trim();
+      }
+      
+      const { data } = await axios.put(`http://localhost:5000/api/projects/${selectedProject.project_id}/complete`, requestBody);
+      setProjects(prev => prev.map(row => 
+        row.project_id === selectedProject.project_id ? data : row
+      ));
+      setShowCompleteModal(false);
+      setSelectedProject(null);
+      
+      // Show success message
+      if (isEarlyCompletion) {
+        showSuccess(NotificationMessages.PROJECT_COMPLETED_EARLY);
+      } else {
+        showSuccess(NotificationMessages.PROJECT_COMPLETED);
+      }
+    } catch (error) {
+      console.error('Complete project failed:', error);
+      const errorMsg = error.response?.data?.error || 'Failed to complete project. Please try again.';
+      showError(errorMsg);
+      setError(errorMsg);
+    }
+  };
 
   // Get unique statuses for filter dropdown
   const getUniqueStatuses = () => {
@@ -60,15 +161,25 @@ const Projects = () => {
     const fetchProjects = async () => {
       try {
         const { data } = await axios.get('http://localhost:5000/api/projects');
+        console.log('Fetched projects:', data);
+        console.log('Current user:', user);
         setProjects(data);
       } catch (err) {
         console.error('Failed to load projects', err);
+        showError('Failed to load projects. Please refresh the page.');
       } finally {
         setLoading(false);
       }
     };
     fetchProjects();
-  }, []);
+  }, [user, showError]);
+
+  // Show success message from navigation if exists
+  useEffect(() => {
+    if (successMessage) {
+      showSuccess(successMessage);
+    }
+  }, [successMessage, showSuccess]);
 
   const clearFilters = () => {
     setSearchTerm('');
@@ -154,10 +265,10 @@ const Projects = () => {
 
           <Card className="shadow-sm">
             <Card.Body>
-              {successMessage && (
-                <div className="alert alert-success" role="alert">
-                  {successMessage}
-                </div>
+              {notification.show && (
+                <Alert variant={notification.variant} dismissible onClose={dismiss}>
+                  {notification.message}
+                </Alert>
               )}
               {loading ? (
                 <div>Loading...</div>
@@ -179,7 +290,7 @@ const Projects = () => {
                       <th>Coordinator</th>
                       <th>Status</th>
                       <th>Date Submitted</th>
-                      <th style={{ width: 150 }}>Actions</th>
+                      <th style={{ width: 200 }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -192,54 +303,94 @@ const Projects = () => {
                         </td>
                         <td>{new Date(p.date_submitted).toLocaleString()}</td>
                         <td>
-                          <div className="d-flex gap-2">
+                          <div className="d-flex gap-1">
                             <OverlayTrigger placement="bottom" overlay={<Tooltip id={`tt-view-${p.project_id}`}>View</Tooltip>}>
                               <Button as={Link} to={`/projects/${p.project_id}`} variant="link" className="icon-only-btn icon-view" aria-label="View project">
                                 <i className="bi bi-eye"></i>
                               </Button>
                             </OverlayTrigger>
-                            {(user && ['Extension Head','GAD','Vice Chancellor','Chancellor','Admin'].includes(user.role)) && (
+                            
+                            {/* Start Project Button - For approved projects */}
+                            {(user && 
+                              p.status === 'Approved' && 
+                              (p.coordinator_id === user.user_id || ['Extension Head','GAD','Vice Chancellor','Chancellor','Admin'].includes(user.role))
+                            ) && (
+                              <OverlayTrigger 
+                                placement="bottom" 
+                                overlay={
+                                  <Tooltip id={`tt-start-${p.project_id}`}>
+                                    {canStartProject(p) ? 'Start Project' : `Can start on ${new Date(p.start_date).toLocaleDateString()}`}
+                                  </Tooltip>
+                                }
+                              >
+                                <Button 
+                                  onClick={() => handleStartProject(p.project_id)}
+                                  variant="link" 
+                                  className="icon-only-btn icon-start" 
+                                  aria-label="Start project"
+                                  disabled={!canStartProject(p)}
+                                >
+                                  <i className="bi bi-play-circle-fill text-success"></i>
+                                </Button>
+                              </OverlayTrigger>
+                            )}
+
+                            {/* End Project Button - For on-going projects */}
+                            {(user && 
+                              p.status === 'On-Going' && 
+                              (p.coordinator_id === user.user_id || ['Extension Head','GAD','Vice Chancellor','Chancellor','Admin'].includes(user.role))
+                            ) && (
+                              <OverlayTrigger 
+                                placement="bottom" 
+                                overlay={
+                                  <Tooltip id={`tt-complete-${p.project_id}`}>
+                                    End Project
+                                  </Tooltip>
+                                }
+                              >
+                                <Button 
+                                  onClick={() => handleCompleteProject(p.project_id)}
+                                  variant="link" 
+                                  className="icon-only-btn icon-complete" 
+                                  aria-label="End project"
+                                  disabled={!canCompleteProject(p)}
+                                >
+                                  <i className="bi bi-check-circle-fill text-info"></i>
+                                </Button>
+                              </OverlayTrigger>
+                            )}
+
+                            {/* Edit Button - For elevated roles OR project coordinator on rejected projects */}
+                            {(user && (
+                              ['Extension Head','GAD','Vice Chancellor','Chancellor','Admin'].includes(user.role) ||
+                              (p.coordinator_id === user.user_id && p.status === 'Rejected')
+                            )) && (
                               <OverlayTrigger placement="bottom" overlay={<Tooltip id={`tt-edit-${p.project_id}`}>Edit</Tooltip>}>
                                 <Button as={Link} to={`/projects/${p.project_id}/edit`} variant="link" className="icon-only-btn icon-edit" aria-label="Edit project">
                                   <i className="bi bi-pencil"></i>
                                 </Button>
                               </OverlayTrigger>
                             )}
-                                                         {(user && ['Extension Head','GAD','Vice Chancellor','Chancellor','Admin'].includes(user.role)) && (
-                               <OverlayTrigger placement="bottom" overlay={<Tooltip id={`tt-del-${p.project_id}`}>Delete</Tooltip>}>
-                                 <Button onClick={async () => {
-                                   if (!window.confirm('Delete this project?')) return;
-                                   try {
-                                     await axios.delete(`http://localhost:5000/api/projects/${p.project_id}`);
-                                     setProjects(prev => prev.filter(row => row.project_id !== p.project_id));
-                                   } catch (e) {
-                                     // eslint-disable-next-line no-console
-                                     console.error('Delete failed', e);
-                                   }
-                                 }} variant="link" className="icon-only-btn icon-delete" aria-label="Delete project">
-                                   <i className="bi bi-trash"></i>
-                                 </Button>
-                               </OverlayTrigger>
-                             )}
-                             {(user && ['Extension Head','GAD','Vice Chancellor','Chancellor','Admin'].includes(user.role) && p.status === 'Approved') && (
-                               <OverlayTrigger placement="bottom" overlay={<Tooltip id={`tt-complete-${p.project_id}`}>Mark as Completed</Tooltip>}>
-                                 <Button onClick={async () => {
-                                   if (!window.confirm('Mark this project as completed?')) return;
-                                   try {
-                                     await axios.put(`http://localhost:5000/api/projects/${p.project_id}/complete`);
-                                     setProjects(prev => prev.map(row => 
-                                       row.project_id === p.project_id 
-                                         ? { ...row, status: 'Completed' }
-                                         : row
-                                     ));
-                                   } catch (e) {
-                                     console.error('Mark as completed failed', e);
-                                   }
-                                 }} variant="link" className="icon-only-btn icon-complete" aria-label="Mark as completed">
-                                   <i className="bi bi-check-circle-fill text-info"></i>
-                                 </Button>
-                               </OverlayTrigger>
-                             )}
+
+                            {/* Delete Button - For elevated roles */}
+                            {(user && ['Extension Head','GAD','Vice Chancellor','Chancellor','Admin'].includes(user.role)) && (
+                              <OverlayTrigger placement="bottom" overlay={<Tooltip id={`tt-del-${p.project_id}`}>Delete</Tooltip>}>
+                                <Button onClick={async () => {
+                                  if (!window.confirm('Delete this project?')) return;
+                                  try {
+                                    await axios.delete(`http://localhost:5000/api/projects/${p.project_id}`);
+                                    setProjects(prev => prev.filter(row => row.project_id !== p.project_id));
+                                    showSuccess(NotificationMessages.PROJECT_DELETED);
+                                  } catch (e) {
+                                    console.error('Delete failed', e);
+                                    const errorMsg = e.response?.data?.error || 'Failed to delete project. Please try again.';
+                                    showError(errorMsg);
+                                  }
+                                }} variant="link" className="icon-only-btn icon-delete" aria-label="Delete project">
+                                  <i className="bi bi-trash"></i>
+                                </Button>
+                              </OverlayTrigger>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -251,6 +402,104 @@ const Projects = () => {
           </Card>
         </Col>
       </Row>
+
+      {/* Complete Project Modal */}
+      <Modal show={showCompleteModal} onHide={() => setShowCompleteModal(false)} size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title className="d-flex align-items-center">
+            <i className="bi bi-check-circle-fill text-info me-2"></i>
+            Complete Project
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <div className="mb-3">
+            <h6 className="text-muted mb-2">Project Details</h6>
+            <div className="bg-light p-3 rounded">
+              <strong>{selectedProject?.title}</strong>
+              <div className="text-muted mt-1">
+                <small>
+                  <i className="bi bi-person-fill me-1"></i>
+                  Coordinator: {selectedProject?.coordinator_fullname}
+                </small>
+              </div>
+              {selectedProject?.end_date && (
+                <div className="text-muted mt-1">
+                  <small>
+                    <i className="bi bi-calendar-event me-1"></i>
+                    Scheduled End Date: {new Date(selectedProject.end_date).toLocaleDateString()}
+                  </small>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {isEarlyCompletion ? (
+            <Alert variant="warning" className="d-flex align-items-start">
+              <i className="bi bi-exclamation-triangle-fill me-2 mt-1"></i>
+              <div>
+                <strong>Early Completion Detected</strong>
+                <div className="mt-1">
+                  You are completing this project before its scheduled end date 
+                  ({new Date(selectedProject?.end_date).toLocaleDateString()}). 
+                  Please provide a reason for early completion.
+                </div>
+              </div>
+            </Alert>
+          ) : (
+            <Alert variant="info" className="d-flex align-items-start">
+              <i className="bi bi-info-circle-fill me-2 mt-1"></i>
+              <div>
+                <strong>Confirm Project Completion</strong>
+                <div className="mt-1">
+                  Are you sure you want to mark this project as completed? 
+                  This action will change the project status and cannot be easily undone.
+                </div>
+              </div>
+            </Alert>
+          )}
+
+          {isEarlyCompletion && (
+            <Form.Group className="mb-3">
+              <Form.Label className="fw-bold">
+                <i className="bi bi-chat-quote me-1"></i>
+                Reason for Early Completion *
+              </Form.Label>
+              <Form.Control 
+                as="textarea" 
+                rows={4}
+                value={completionReason}
+                onChange={(e) => setCompletionReason(e.target.value)}
+                placeholder="Please explain why this project is being completed before its scheduled end date..."
+                className="form-control"
+              />
+              <Form.Text className="text-muted">
+                This information will be logged and may be reviewed by administrators.
+              </Form.Text>
+            </Form.Group>
+          )}
+
+          {error && (
+            <Alert variant="danger" className="mt-3">
+              <i className="bi bi-exclamation-triangle-fill me-2"></i>
+              {error}
+            </Alert>
+          )}
+        </Modal.Body>
+        <Modal.Footer className="d-flex justify-content-between">
+          <Button variant="outline-secondary" onClick={() => setShowCompleteModal(false)}>
+            <i className="bi bi-x-lg me-1"></i>
+            Cancel
+          </Button>
+          <Button 
+            variant="success" 
+            onClick={submitCompletion}
+            disabled={isEarlyCompletion && !completionReason.trim()}
+          >
+            <i className="bi bi-check-circle-fill me-1"></i>
+            {isEarlyCompletion ? 'Complete Early' : 'Complete Project'}
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 };

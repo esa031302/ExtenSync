@@ -49,9 +49,10 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, [token]);
 
-  const login = async (email, password) => {
+  const login = async (email, password, loginType = 'employee') => {
     try {
-      const response = await axios.post('/auth/login', { email, password });
+      const endpoint = loginType === 'beneficiary' ? '/auth/beneficiary-login' : '/auth/login';
+      const response = await axios.post(endpoint, { email, password });
       const { token: newToken } = response.data;
       // Set token first so subsequent requests include it
       setToken(newToken);
@@ -59,8 +60,9 @@ export const AuthProvider = ({ children }) => {
       const meResponse = await axios.get('/auth/me', {
         headers: { Authorization: `Bearer ${newToken}` }
       });
-      setUser(meResponse.data);
-      return { success: true };
+      const userData = meResponse.data;
+      setUser(userData);
+      return { success: true, user: userData };
     } catch (error) {
       return { 
         success: false, 
@@ -99,6 +101,35 @@ export const AuthProvider = ({ children }) => {
       // Clear local state regardless of API call success
       setToken(null);
       setUser(null);
+      setLoading(false);
+    }
+  };
+
+  const logoutWithRedirect = async (navigate) => {
+    const currentUser = user;
+    
+    try {
+      // Call the backend logout endpoint to log the logout action
+      await axios.post('/auth/logout');
+    } catch (error) {
+      console.error('Logout API call failed:', error);
+    } finally {
+      // Clear local state regardless of API call success
+      setToken(null);
+      setUser(null);
+      setLoading(false);
+      
+      // Small delay to ensure state is cleared before redirect
+      setTimeout(() => {
+        // Role-based redirect logic
+        if (currentUser && currentUser.role === 'Beneficiary') {
+          // Beneficiaries return to portal
+          navigate('/portal');
+        } else {
+          // All other roles (employees) go to employee login
+          navigate('/login');
+        }
+      }, 100);
     }
   };
 
@@ -113,6 +144,7 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
+    logoutWithRedirect,
     updateUser
   };
 

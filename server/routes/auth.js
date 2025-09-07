@@ -72,7 +72,7 @@ router.post('/register', [
 });
 
 // @route   POST /api/auth/login
-// @desc    Authenticate user & get token
+// @desc    Authenticate employee & get token (employees only)
 // @access  Public
 router.post('/login', [
   body('email', 'Please include a valid email').isEmail(),
@@ -102,6 +102,11 @@ router.post('/login', [
     // Check if account is active
     if (user.account_status !== 'Active') {
       return res.status(400).json({ error: 'Account is inactive' });
+    }
+
+    // Check if user is NOT a beneficiary (employees only)
+    if (user.role === 'Beneficiary') {
+      return res.status(400).json({ error: 'Invalid credentials' });
     }
 
     // Check password
@@ -157,6 +162,108 @@ router.post('/login', [
           }
         } catch (logError) {
           console.error('Error updating login log:', logError);
+        }
+        
+        res.json({ token });
+      }
+    );
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// @route   POST /api/auth/beneficiary-login
+// @desc    Authenticate beneficiary & get token (beneficiaries only)
+// @access  Public
+router.post('/beneficiary-login', [
+  body('email', 'Please include a valid email').isEmail(),
+  body('password', 'Password is required').exists(),
+  logActions.login
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { email, password } = req.body;
+
+    // Check if user exists
+    const [users] = await db.promise.query(
+      'SELECT * FROM users WHERE email = ?',
+      [email]
+    );
+
+    if (users.length === 0) {
+      return res.status(400).json({ error: 'Invalid credentials' });
+    }
+
+    const user = users[0];
+
+    // Check if account is active
+    if (user.account_status !== 'Active') {
+      return res.status(400).json({ error: 'Account is inactive' });
+    }
+
+    // Check if user IS a beneficiary (beneficiaries only)
+    if (user.role !== 'Beneficiary') {
+      return res.status(400).json({ error: 'Invalid credentials' });
+    }
+
+    // Check password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ error: 'Invalid credentials' });
+    }
+
+    // Update last login
+    await db.promise.query(
+      'UPDATE users SET last_login = NOW() WHERE user_id = ?',
+      [user.user_id]
+    );
+
+    // Create JWT token
+    const payload = {
+      user: {
+        id: user.user_id,
+        fullname: user.fullname,
+        email: user.email,
+        role: user.role
+      }
+    };
+
+    jwt.sign(
+      payload,
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN || '24h' },
+      async (err, token) => {
+        if (err) throw err;
+        
+        // Update the log entry with the actual user_id
+        try {
+          // First, let's find the most recent login log for this email that has null user_id
+          const [findResult] = await db.promise.query(
+            'SELECT log_id FROM system_logs WHERE action = ? AND additional_data LIKE ? AND user_id IS NULL ORDER BY created_at DESC LIMIT 1',
+            ['LOGIN', `%${user.email}%`]
+          );
+          
+          if (findResult.length > 0) {
+            const logId = findResult[0].log_id;
+            const [updateResult] = await db.promise.query(
+              'UPDATE system_logs SET user_id = ?, description = ? WHERE log_id = ?',
+              [
+                user.user_id,
+                `Beneficiary logged in successfully: ${user.fullname} (${user.email}) - ${user.role}`,
+                logId
+              ]
+            );
+            console.log(`Updated beneficiary login log ID ${logId} for user ${user.email} (${user.role}), rows affected: ${updateResult.affectedRows}`);
+          } else {
+            console.log(`No login log found to update for beneficiary ${user.email}`);
+          }
+        } catch (logError) {
+          console.error('Error updating beneficiary login log:', logError);
         }
         
         res.json({ token });

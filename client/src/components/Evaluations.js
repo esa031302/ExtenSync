@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Container, Row, Col, Card, Table, Badge, Button, Form, InputGroup, Alert } from 'react-bootstrap';
+import { Container, Row, Col, Card, Table, Badge, Button, Form, InputGroup, Alert, OverlayTrigger, Tooltip } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
@@ -269,44 +269,52 @@ const Evaluations = () => {
                         </td>
                         <td>
                           <div className="d-flex gap-1">
-                            <Button
-                              as={Link}
-                              to={`/evaluations/${evaluation.eval_id}`}
-                              variant="outline-primary"
-                              size="sm"
-                              title="View Details"
-                            >
-                              <i className="bi bi-eye"></i>
-                            </Button>
-                            {!isExtensionCoordinator && (user.user_id === evaluation.evaluator_id || user.role === 'Admin') && (
+                            <OverlayTrigger placement="bottom" overlay={<Tooltip id={`tt-view-${evaluation.eval_id}`}>View</Tooltip>}>
                               <Button
                                 as={Link}
-                                to={`/evaluations/${evaluation.eval_id}/edit`}
-                                variant="outline-secondary"
-                                size="sm"
-                                title="Edit"
+                                to={`/evaluations/${evaluation.eval_id}`}
+                                variant="link"
+                                className="icon-only-btn icon-view"
+                                aria-label="View evaluation"
                               >
-                                <i className="bi bi-pencil"></i>
+                                <i className="bi bi-eye"></i>
                               </Button>
+                            </OverlayTrigger>
+
+                            {!isExtensionCoordinator && (user.user_id === evaluation.evaluator_id || user.role === 'Admin') && (
+                              <OverlayTrigger placement="bottom" overlay={<Tooltip id={`tt-edit-${evaluation.eval_id}`}>Edit</Tooltip>}>
+                                <Button
+                                  as={Link}
+                                  to={`/evaluations/${evaluation.eval_id}/edit`}
+                                  variant="link"
+                                  className="icon-only-btn icon-edit"
+                                  aria-label="Edit evaluation"
+                                >
+                                  <i className="bi bi-pencil"></i>
+                                </Button>
+                              </OverlayTrigger>
                             )}
+
                             {!isExtensionCoordinator && user.role === 'Admin' && (
-                              <Button
-                                variant="outline-danger"
-                                size="sm"
-                                title="Delete"
-                                onClick={async () => {
-                                  if (!window.confirm('Are you sure you want to delete this evaluation?')) return;
-                                  try {
-                                    await axios.delete(`http://localhost:5000/api/evaluations/${evaluation.eval_id}`);
-                                    setEvaluations(prev => prev.filter(e => e.eval_id !== evaluation.eval_id));
-                                  } catch (err) {
-                                    console.error('Failed to delete evaluation', err);
-                                    setError('Failed to delete evaluation');
-                                  }
-                                }}
-                              >
-                                <i className="bi bi-trash"></i>
-                              </Button>
+                              <OverlayTrigger placement="bottom" overlay={<Tooltip id={`tt-del-${evaluation.eval_id}`}>Delete</Tooltip>}>
+                                <Button
+                                  variant="link"
+                                  className="icon-only-btn icon-delete"
+                                  aria-label="Delete evaluation"
+                                  onClick={async () => {
+                                    if (!window.confirm('Are you sure you want to delete this evaluation?')) return;
+                                    try {
+                                      await axios.delete(`http://localhost:5000/api/evaluations/${evaluation.eval_id}`);
+                                      setEvaluations(prev => prev.filter(e => e.eval_id !== evaluation.eval_id));
+                                    } catch (err) {
+                                      console.error('Failed to delete evaluation', err);
+                                      setError('Failed to delete evaluation');
+                                    }
+                                  }}
+                                >
+                                  <i className="bi bi-trash"></i>
+                                </Button>
+                              </OverlayTrigger>
                             )}
                           </div>
                         </td>

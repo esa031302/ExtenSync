@@ -10,8 +10,7 @@ import {
   Form, 
   Badge, 
   Alert,
-  Spinner,
-  Dropdown
+  Spinner
 } from 'react-bootstrap';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
@@ -264,25 +263,26 @@ const UserManagement = () => {
                         {new Date(user.date_registered).toLocaleDateString()}
                       </td>
                       <td>
-                        <Dropdown>
-                          <Dropdown.Toggle variant="outline-secondary" size="sm">
-                            Actions
-                          </Dropdown.Toggle>
-                          <Dropdown.Menu>
-                            <Dropdown.Item onClick={() => handleShowModal(user)}>
-                              <i className="bi bi-pencil me-1"></i>
-                              Edit
-                            </Dropdown.Item>
-                            <Dropdown.Divider />
-                            <Dropdown.Item 
-                              onClick={() => handleDelete(user.user_id, user.fullname)}
-                              className="text-danger"
-                            >
-                              <i className="bi bi-trash me-1"></i>
-                              Delete
-                            </Dropdown.Item>
-                          </Dropdown.Menu>
-                        </Dropdown>
+                        <div className="d-flex gap-2">
+                          <Button
+                            variant="outline-primary"
+                            size="sm"
+                            onClick={() => handleShowModal(user)}
+                            title="Edit User"
+                            className="d-flex align-items-center"
+                          >
+                            <i className="bi bi-pencil"></i>
+                          </Button>
+                          <Button
+                            variant="outline-danger"
+                            size="sm"
+                            onClick={() => handleDelete(user.user_id, user.fullname)}
+                            title="Delete User"
+                            className="d-flex align-items-center"
+                          >
+                            <i className="bi bi-trash"></i>
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}

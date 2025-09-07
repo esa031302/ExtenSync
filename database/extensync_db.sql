@@ -176,7 +176,7 @@ CREATE TABLE `users` (
   `fullname` varchar(255) NOT NULL,
   `email` varchar(255) NOT NULL,
   `password` varchar(255) NOT NULL,
-  `role` enum('Extension Coordinator','Extension Head','GAD','Vice Chancellor','Chancellor','Admin') NOT NULL,
+  `role` enum('Extension Coordinator','Extension Head','GAD','Vice Chancellor','Chancellor','Admin','Beneficiary') NOT NULL,
   `department_college` varchar(255) NOT NULL,
   `profile_photo` text DEFAULT NULL,
   `signature_path` text DEFAULT NULL,

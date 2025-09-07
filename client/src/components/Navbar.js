@@ -7,7 +7,7 @@ import axios from 'axios';
 import './Navbar.css';
 
 const NavigationBar = () => {
-  const { user, logout } = useAuth();
+  const { user, logoutWithRedirect } = useAuth();
   const navigate = useNavigate();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [notifications, setNotifications] = useState([]);
@@ -38,9 +38,9 @@ const NavigationBar = () => {
   }, [user]);
 
   const handleLogout = () => {
-    logout();
-    navigate('/');
+    logoutWithRedirect(navigate);
   };
+
 
   const formatTime = (date) => {
     return date.toLocaleTimeString('en-US', {
@@ -83,6 +83,21 @@ const NavigationBar = () => {
           <div className="navbar-icons">
             <OverlayTrigger
               placement="bottom"
+              overlay={<Tooltip id="portal-tooltip">Community Portal</Tooltip>}
+            >
+              <Button 
+                variant="link" 
+                className="icon-button" 
+                onClick={() => {
+                  navigate('/portal');
+                }}
+              >
+                <i className="bi bi-globe"></i>
+              </Button>
+            </OverlayTrigger>
+
+            <OverlayTrigger
+              placement="bottom"
               overlay={<Tooltip id="conversations-tooltip">Conversations</Tooltip>}
             >
               <Button variant="link" className="icon-button" as={Link} to="/conversations">
@@ -113,11 +128,35 @@ const NavigationBar = () => {
                 </Dropdown.Toggle>
               </OverlayTrigger>
               <Dropdown.Menu style={{ minWidth: 360 }}>
-                <Dropdown.Header>Notifications</Dropdown.Header>
+                <div className="d-flex justify-content-between align-items-center px-3 py-2">
+                  <div className="fw-semibold">Notifications</div>
+                  {notifications.length > 0 && (
+                    <OverlayTrigger placement="left" overlay={<Tooltip id="tt-mark-all">Mark all as read</Tooltip>}>
+                      <Button
+                        variant="link"
+                        className="p-0 icon-only-btn"
+                        aria-label="Mark all as read"
+                        onClick={async (e) => {
+                          e.preventDefault();
+                          try {
+                            await axios.post('/notifications/mark-all-read');
+                            setNotifications(prev => prev.map(n => ({ ...n, status: 'Read' })));
+                          } catch (err) {
+                            // no-op
+                          }
+                        }}
+                      >
+                        <i className="bi bi-check2-all"></i>
+                      </Button>
+                    </OverlayTrigger>
+                  )}
+                </div>
+                
                 {notifications.length === 0 && (
                   <Dropdown.ItemText className="text-muted">No notifications</Dropdown.ItemText>
                 )}
-                {notifications.map((n) => (
+                
+                {notifications.slice(0, 5).map((n) => (
                   <Dropdown.Item key={n.notif_id} as={Link} to={n.link || '/projects'} onClick={async (e) => {
                     try { await axios.post(`/notifications/${n.notif_id}/read`); } catch {}
                   }}>
@@ -127,8 +166,40 @@ const NavigationBar = () => {
                     </div>
                   </Dropdown.Item>
                 ))}
+                
+                {notifications.length > 5 && (
+                  <Dropdown.ItemText className="text-muted text-center small">
+                    ... and {notifications.length - 5} more
+                  </Dropdown.ItemText>
+                )}
+                
+                {notifications.length > 0 && (
+                  <>
+                    <Dropdown.Divider />
+                    <Dropdown.Item as={Link} to="/notifications" className="text-center fw-semibold text-primary">
+                      <i className="bi bi-eye me-2"></i>
+                      View All Notifications
+                    </Dropdown.Item>
+                  </>
+                )}
               </Dropdown.Menu>
             </Dropdown>
+            
+            {user && (
+              <OverlayTrigger
+                placement="bottom"
+                overlay={<Tooltip id="account-tooltip">Account</Tooltip>}
+              >
+                <Button 
+                  variant="link" 
+                  className="icon-button"
+                  as={Link} 
+                  to="/profile"
+                >
+                  <i className="bi bi-person-fill"></i>
+                </Button>
+              </OverlayTrigger>
+            )}
             
             {user && (
               <OverlayTrigger

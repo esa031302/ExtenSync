@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { Container, Card, Form, Button, Alert, Row, Col } from 'react-bootstrap';
 import { useAuth } from '../context/AuthContext';
+import { NotificationMessages } from '../hooks/useNotification';
 
 const EXTENSION_AGENDAS = [
   'BatStateU Inclusive Social Innovation for Regional Growth (BISIG) Program',
@@ -42,10 +43,23 @@ const ProjectEdit = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+  
+  // State declarations
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [project, setProject] = useState(null);
+  
+  // Check if user can edit dates and status (elevated roles only, OR coordinators for rejected projects)
+  const isElevatedRole = user && ['Extension Head', 'GAD', 'Vice Chancellor', 'Chancellor', 'Admin'].includes(user.role);
+  const canEditStatus = isElevatedRole; // Status editing still restricted to elevated roles only
+  
+  // Calculate canEditDates after project is loaded
+  const canEditDates = isElevatedRole || (
+    user && user.role === 'Extension Coordinator' && 
+    project && project.coordinator_id === user.user_id && 
+    project.status === 'Rejected'
+  );
 
   const [fundSourceOther, setFundSourceOther] = useState('');
   const [form, setForm] = useState({
@@ -57,7 +71,8 @@ const ProjectEdit = () => {
     end_date: '',
     start_time: '',
     end_time: '',
-    extension_agenda: [],
+    status: '', // Add status field for elevated roles
+    extension_agenda: '',
     sdg_goals: [],
     offices_involved: '',
     programs_involved: '',
@@ -84,6 +99,7 @@ const ProjectEdit = () => {
         setProject(data);
         const parseList = (value) => { try { const v = JSON.parse(value); return Array.isArray(v) ? v : []; } catch { return []; } };
         const extAgenda = parseList(data.extension_agenda);
+        const singleExtAgenda = extAgenda.length > 0 ? extAgenda[0] : '';
         const sdgs = parseList(data.sdg_goals);
         const fundList = parseList(data.fund_source);
         const fundOpts = [];
@@ -104,7 +120,12 @@ const ProjectEdit = () => {
           title: data.title || '',
           location: data.location || '',
           duration: data.duration || '',
-          extension_agenda: extAgenda,
+          start_date: data.start_date ? data.start_date.split('T')[0] : '',
+          end_date: data.end_date ? data.end_date.split('T')[0] : '',
+          start_time: data.start_time || '',
+          end_time: data.end_time || '',
+          status: data.status || '',
+          extension_agenda: singleExtAgenda,
           sdg_goals: sdgs,
           offices_involved: data.offices_involved || '',
           programs_involved: data.programs_involved || '',
@@ -162,11 +183,22 @@ const ProjectEdit = () => {
     setError('');
     try {
       const payload = { ...form };
+      
+      // Remove status field for coordinators (only elevated roles can change status)
+      if (!canEditStatus) {
+        delete payload.status;
+      }
+      
+      // Convert extension_agenda string to array for backend compatibility
+      if (form.extension_agenda) {
+        payload.extension_agenda = [form.extension_agenda];
+      }
+      
       if (form.fund_source.includes('Others')) {
         payload.fund_source = form.fund_source.map((fs) => fs === 'Others' ? (fundSourceOther.trim() ? `Others: ${fundSourceOther.trim()}` : 'Others') : fs);
       }
       await axios.put(`/projects/${id}`, payload);
-      navigate('/projects', { state: { success: 'Project updated successfully' } });
+      navigate('/projects', { state: { success: NotificationMessages.PROJECT_UPDATED } });
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to save changes');
     } finally {
@@ -218,18 +250,56 @@ const ProjectEdit = () => {
               <Form.Control name="location" value={form.location} onChange={handleChange} />
             </Form.Group>
 
+            {/* Status - For elevated roles only */}
+            {canEditStatus && (
+              <Form.Group className="mb-3">
+                <Form.Label>
+                  Project Status 
+                  <small className="text-muted ms-2">
+                    <i className="bi bi-shield-check"></i> Elevated roles only
+                  </small>
+                </Form.Label>
+                <Form.Select 
+                  name="status" 
+                  value={form.status} 
+                  onChange={handleChange}
+                  className="border-warning"
+                >
+                  <option value="Pending">Pending</option>
+                  <option value="Approved">Approved</option>
+                  <option value="On-Going">On-Going</option>
+                  <option value="Completed">Completed</option>
+                  <option value="Rejected">Rejected</option>
+                </Form.Select>
+                <Form.Text className="text-warning">
+                  <i className="bi bi-exclamation-triangle"></i> 
+                  Changing status will notify relevant users and may affect project workflow.
+                </Form.Text>
+              </Form.Group>
+            )}
+
             {/* Duration - Enhanced with better date/time inputs */}
             <Form.Group className="mb-3">
-              <Form.Label>Duration (Date and Time)</Form.Label>
+              <Form.Label>
+                Duration (Date and Time) <span className="text-danger">*</span>
+                {!canEditDates && (
+                  <small className="text-muted ms-2">
+                    <i className="bi bi-info-circle"></i> Only elevated roles can modify dates, or coordinators can modify dates for rejected projects
+                  </small>
+                )}
+              </Form.Label>
               <Row>
                 <Col md={6}>
-                  <Form.Label className="small text-muted">Start Date</Form.Label>
+                  <Form.Label className="small text-muted">Start Date <span className="text-danger">*</span></Form.Label>
                   <Form.Control 
                     type="date" 
                     name="start_date" 
                     value={form.start_date || ''} 
                     onChange={handleChange}
                     placeholder="Start Date"
+                    required
+                    disabled={!canEditDates}
+                    className={!canEditDates ? 'bg-light' : ''}
                   />
                 </Col>
                 <Col md={6}>
@@ -240,6 +310,8 @@ const ProjectEdit = () => {
                     value={form.end_date || ''} 
                     onChange={handleChange}
                     placeholder="End Date"
+                    disabled={!canEditDates}
+                    className={!canEditDates ? 'bg-light' : ''}
                   />
                 </Col>
               </Row>
@@ -252,6 +324,8 @@ const ProjectEdit = () => {
                     value={form.start_time || ''} 
                     onChange={handleChange}
                     placeholder="Start Time"
+                    disabled={!canEditDates}
+                    className={!canEditDates ? 'bg-light' : ''}
                   />
                 </Col>
                 <Col md={6}>
@@ -262,17 +336,33 @@ const ProjectEdit = () => {
                     value={form.end_time || ''} 
                     onChange={handleChange}
                     placeholder="End Time"
+                    disabled={!canEditDates}
+                    className={!canEditDates ? 'bg-light' : ''}
                   />
                 </Col>
               </Row>
-
+              {!canEditDates && (
+                <div className="mt-2">
+                  <small className="text-muted">
+                    <i className="bi bi-lock"></i> Date and time fields can only be modified by Extension Head, GAD, Vice Chancellor, Chancellor, or Admin roles.
+                  </small>
+                </div>
+              )}
             </Form.Group>
 
             {/* Extension Agenda */}
             <Form.Group className="mb-3">
               <Form.Label>Type of Extension Service Agenda (Choose the MOST - only one)</Form.Label>
               {EXTENSION_AGENDAS.map((agenda) => (
-                <Form.Check key={agenda} type="checkbox" label={agenda} checked={form.extension_agenda.includes(agenda)} onChange={() => handleCheckboxGroup('extension_agenda', agenda)} />
+                <Form.Check 
+                  key={agenda} 
+                  type="radio" 
+                  name="extension_agenda"
+                  label={agenda} 
+                  value={agenda}
+                  checked={form.extension_agenda === agenda} 
+                  onChange={handleChange} 
+                />
               ))}
             </Form.Group>
 

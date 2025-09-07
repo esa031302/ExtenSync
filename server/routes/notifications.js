@@ -21,6 +21,20 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
+// @route   POST /api/notifications/mark-all-read
+// @desc    Mark all current user's notifications as read
+// @access  Private
+router.post('/mark-all-read', auth, async (req, res) => {
+  try {
+    const requester = req.user.user;
+    await db.promise.query('UPDATE notifications SET status = "Read" WHERE user_id = ? AND status = "Unread"', [requester.id]);
+    res.json({ message: 'All notifications marked as read' });
+  } catch (err) {
+    console.error('Error marking all as read:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // @route   POST /api/notifications/:id/read
 // @desc    Mark a notification as read
 // @access  Private

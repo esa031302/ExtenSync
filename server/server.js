@@ -16,6 +16,8 @@ const documentRoutes = require('./routes/documents');
 const logRoutes = require('./routes/logs');
 const conversationRoutes = require('./routes/conversations');
 const evaluationRoutes = require('./routes/evaluations');
+const reportRoutes = require('./routes/reports');
+const communityRoutes = require('./routes/community');
 const { initializeSocket } = require('./socket');
 
 const app = express();
@@ -75,6 +77,8 @@ app.use('/api/documents', documentRoutes);
 app.use('/api/logs', logRoutes);
 app.use('/api/conversations', conversationRoutes);
 app.use('/api/evaluations', evaluationRoutes);
+app.use('/api/reports', reportRoutes);
+app.use('/api/community', communityRoutes);
 app.use('/api/calendar', require('./routes/calendar'));
 
 // Health check endpoint

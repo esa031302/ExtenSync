@@ -1,0 +1,102 @@
+.beneficiary-login-container {
+  min-height: calc(100vh - 200px);
+  display: flex;
+  align-items: center;
+  padding: 2rem 0;
+}
+
+.beneficiary-login-card {
+  border-radius: 15px;
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  margin: 2rem 0;
+}
+
+.brand-logo {
+  height: 60px;
+  width: auto;
+}
+
+.beneficiary-login-button {
+  background: linear-gradient(45deg, #0d6efd, #6610f2);
+  border: none;
+  border-radius: 25px;
+  padding: 0.75rem 2rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  min-width: 200px;
+}
+
+.beneficiary-login-button:hover {
+  background: linear-gradient(45deg, #0b5ed7, #5a0fc8);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3);
+}
+
+.beneficiary-login-button:disabled {
+  background: #6c757d;
+  transform: none;
+  box-shadow: none;
+}
+
+.form-control {
+  border-radius: 10px;
+  border: 2px solid #e9ecef;
+  padding: 0.75rem 1rem;
+  transition: all 0.3s ease;
+}
+
+.form-control:focus {
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+.form-label {
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 0.5rem;
+}
+
+.alert {
+  border-radius: 10px;
+  border: none;
+  font-weight: 500;
+}
+
+.text-primary {
+  color: #0d6efd !important;
+}
+
+.shadow {
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+
+@media (max-width: 768px) {
+  .beneficiary-login-container {
+    min-height: calc(100vh - 150px);
+    padding: 1rem 0;
+  }
+  
+  .beneficiary-login-card {
+    margin: 1rem;
+  }
+  
+  .brand-logo {
+    height: 50px;
+  }
+  
+  .beneficiary-login-button {
+    min-width: 180px;
+    padding: 0.6rem 1.5rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .beneficiary-login-container {
+    min-height: calc(100vh - 120px);
+    padding: 0.5rem 0;
+  }
+  
+  .beneficiary-login-card .card-body {
+    padding: 2rem !important;
+  }
+}

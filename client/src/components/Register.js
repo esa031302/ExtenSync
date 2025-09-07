@@ -66,7 +66,8 @@ const Register = () => {
     'GAD',
     'Vice Chancellor',
     'Chancellor',
-    'Admin'
+    'Admin',
+    'Beneficiary'
   ];
 
   return (

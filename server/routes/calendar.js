@@ -18,7 +18,7 @@ router.get('/events', auth, async (req, res) => {
     
     connection = await promisePool.getConnection();
     
-    // Get approved projects and generate events for each day in the duration
+    // Get approved, on-going, and completed projects and generate events for each day in the duration
     let baseQuery = `
       SELECT 
         p.project_id,
@@ -29,14 +29,14 @@ router.get('/events', auth, async (req, res) => {
         p.start_time,
         p.end_time,
         p.initiative_type as event_type,
-        'active' as status,
+        p.status as project_status,
         p.date_submitted as created_at,
         p.title as project_title,
         p.coordinator_id,
         u.fullname as coordinator_name
       FROM projects p
       JOIN users u ON p.coordinator_id = u.user_id
-      WHERE p.status = 'Approved' AND p.start_date IS NOT NULL
+      WHERE p.status IN ('Approved', 'On-Going', 'Completed') AND p.start_date IS NOT NULL
     `;
     
     const params = [];
@@ -103,13 +103,32 @@ router.get('/events', auth, async (req, res) => {
     let startEventTitle = project.title;
     let startEventDescription = project.title;
     
-    if (startDateStr !== endDateStr) {
-      // Multi-day project - mark start
-      startEventTitle += ' (Start)';
-      startEventDescription += ` - Project Start (Day 1 of ${totalDays})`;
-    } else {
-      // Single day project
-      startEventDescription += ' - Project Event';
+    if (project.project_status === 'Approved') {
+      // Approved projects - show as planned
+      if (startDateStr !== endDateStr) {
+        startEventTitle += ' (Planned Start)';
+        startEventDescription += ` - Planned Project Start (${totalDays} days planned)`;
+      } else {
+        startEventTitle += ' (Planned)';
+        startEventDescription += ' - Planned Project Event';
+      }
+    } else if (project.project_status === 'On-Going') {
+      // On-going projects - show day counting
+      if (startDateStr !== endDateStr) {
+        startEventTitle += ' (Start)';
+        startEventDescription += ` - Project Start (Day 1 of ${totalDays})`;
+      } else {
+        startEventDescription += ' - Project Event';
+      }
+    } else if (project.project_status === 'Completed') {
+      // Completed projects - show as completed
+      if (startDateStr !== endDateStr) {
+        startEventTitle += ' (Started)';
+        startEventDescription += ` - Project Started (Completed - ${totalDays} days)`;
+      } else {
+        startEventTitle += ' (Completed)';
+        startEventDescription += ' - Project Event (Completed)';
+      }
     }
     
             events.push({
@@ -123,7 +142,7 @@ router.get('/events', auth, async (req, res) => {
         end_time: project.end_time,
         description: startEventDescription,
         event_type: (project.event_type || 'Project').toLowerCase() + '_start',
-        status: project.status,
+        status: project.project_status,
         created_at: project.created_at,
         project_title: project.project_title,
         coordinator_id: project.coordinator_id,
@@ -132,8 +151,19 @@ router.get('/events', auth, async (req, res) => {
     
     // Create event for end date (only if different from start date)
     if (startDateStr !== endDateStr) {
-      let endEventTitle = project.title + ' (End)';
-      let endEventDescription = project.title + ` - Project End (Day ${totalDays} of ${totalDays})`;
+      let endEventTitle = project.title;
+      let endEventDescription = project.title;
+      
+      if (project.project_status === 'Approved') {
+        endEventTitle += ' (Planned End)';
+        endEventDescription += ` - Planned Project End (${totalDays} days planned)`;
+      } else if (project.project_status === 'On-Going') {
+        endEventTitle += ' (End)';
+        endEventDescription += ` - Project End (Day ${totalDays} of ${totalDays})`;
+      } else if (project.project_status === 'Completed') {
+        endEventTitle += ' (Completed)';
+        endEventDescription += ` - Project Completed (${totalDays} days)`;
+      }
       
               events.push({
         project_id: project.project_id,
@@ -146,7 +176,7 @@ router.get('/events', auth, async (req, res) => {
         end_time: project.end_time,
         description: endEventDescription,
         event_type: (project.event_type || 'Project').toLowerCase() + '_end',
-        status: project.status,
+        status: project.project_status,
         created_at: project.created_at,
         project_title: project.project_title,
         coordinator_id: project.coordinator_id,
@@ -186,7 +216,7 @@ router.get('/events/date/:date', auth, async (req, res) => {
     
     connection = await promisePool.getConnection();
     
-    // Get approved projects that include the specified date in their duration
+    // Get approved, on-going, and completed projects that include the specified date in their duration
     let baseQuery = `
       SELECT 
         p.project_id,
@@ -197,13 +227,13 @@ router.get('/events/date/:date', auth, async (req, res) => {
         p.start_time,
         p.end_time,
         p.initiative_type as event_type,
-        'active' as status,
+        p.status as project_status,
         p.title as project_title,
         p.coordinator_id,
         u.fullname as coordinator_name
       FROM projects p
       JOIN users u ON p.coordinator_id = u.user_id
-      WHERE p.status = 'Approved' AND p.start_date IS NOT NULL 
+      WHERE p.status IN ('Approved', 'On-Going', 'Completed') AND p.start_date IS NOT NULL 
         AND p.start_date <= ? AND COALESCE(p.end_date, p.start_date) >= ?
     `;
     
@@ -250,17 +280,41 @@ router.get('/events/date/:date', auth, async (req, res) => {
         if (startDateStr !== endDateStr) {
           // Multi-day project
           if (isStartDate) {
-            eventTitle += ' (Start)';
-            eventDescription += ` - Project Start (Day 1 of ${totalDays})`;
+            if (project.project_status === 'Approved') {
+              eventTitle += ' (Planned Start)';
+              eventDescription += ` - Planned Project Start (${totalDays} days planned)`;
+            } else if (project.project_status === 'On-Going') {
+              eventTitle += ' (Start)';
+              eventDescription += ` - Project Start (Day 1 of ${totalDays})`;
+            } else if (project.project_status === 'Completed') {
+              eventTitle += ' (Started)';
+              eventDescription += ` - Project Started (Completed - ${totalDays} days)`;
+            }
             eventType += '_start';
           } else if (isEndDate) {
-            eventTitle += ' (End)';
-            eventDescription += ` - Project End (Day ${totalDays} of ${totalDays})`;
+            if (project.project_status === 'Approved') {
+              eventTitle += ' (Planned End)';
+              eventDescription += ` - Planned Project End (${totalDays} days planned)`;
+            } else if (project.project_status === 'On-Going') {
+              eventTitle += ' (End)';
+              eventDescription += ` - Project End (Day ${totalDays} of ${totalDays})`;
+            } else if (project.project_status === 'Completed') {
+              eventTitle += ' (Completed)';
+              eventDescription += ` - Project Completed (${totalDays} days)`;
+            }
             eventType += '_end';
           }
         } else {
           // Single day project
-          eventDescription += ' - Project Event';
+          if (project.project_status === 'Approved') {
+            eventTitle += ' (Planned)';
+            eventDescription += ' - Planned Project Event';
+          } else if (project.project_status === 'On-Going') {
+            eventDescription += ' - Project Event';
+          } else if (project.project_status === 'Completed') {
+            eventTitle += ' (Completed)';
+            eventDescription += ' - Project Event (Completed)';
+          }
           eventType += '_start';
         }
         
@@ -275,7 +329,7 @@ router.get('/events/date/:date', auth, async (req, res) => {
           end_time: project.end_time,
           description: eventDescription,
           event_type: eventType,
-          status: 'active',
+          status: project.project_status,
           project_title: project.project_title,
           coordinator_id: project.coordinator_id,
           coordinator_name: project.coordinator_name

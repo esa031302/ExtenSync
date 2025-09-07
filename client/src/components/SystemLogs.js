@@ -191,7 +191,11 @@ const SystemLogs = () => {
       'DELETE': 'danger',
       'UPLOAD': 'info',
       'EVALUATE': 'dark',
-      'DOWNLOAD': 'success'
+      'DOWNLOAD': 'success',
+      'START': 'info',
+      'COMPLETE': 'success',
+      'APPROVE': 'success',
+      'REJECT': 'danger'
     };
     return colors[action] || 'light';
   };

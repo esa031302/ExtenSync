@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const mysql = require('mysql2/promise');
 const auth = require('../middleware/auth');
-const { logSystemActivity } = require('../middleware/logger');
+const { logSystemActivity, logActions } = require('../middleware/logger');
 const pool = require('../config/database');
 const promisePool = require('../config/database').promise;
 
@@ -47,7 +47,15 @@ router.get('/', auth, async (req, res) => {
     
     const [evaluations] = await connection.execute(query, params);
     
-    res.json(evaluations);
+    // Parse JSON fields for each evaluation
+    const parsedEvaluations = evaluations.map(evaluation => ({
+      ...evaluation,
+      rubric_scores: typeof evaluation.rubric_scores === 'string' 
+        ? JSON.parse(evaluation.rubric_scores) 
+        : evaluation.rubric_scores
+    }));
+    
+    res.json(parsedEvaluations);
   } catch (error) {
     console.error('Error fetching evaluations:', error);
     res.status(500).json({ error: 'Failed to fetch evaluations' });
@@ -85,7 +93,15 @@ router.get('/project/:projectId', auth, async (req, res) => {
     
     const [evaluations] = await connection.execute(query, [projectId]);
     
-    res.json(evaluations);
+    // Parse JSON fields for each evaluation
+    const parsedEvaluations = evaluations.map(evaluation => ({
+      ...evaluation,
+      rubric_scores: typeof evaluation.rubric_scores === 'string' 
+        ? JSON.parse(evaluation.rubric_scores) 
+        : evaluation.rubric_scores
+    }));
+    
+    res.json(parsedEvaluations);
   } catch (error) {
     console.error('Error fetching project evaluations:', error);
     res.status(500).json({ error: 'Failed to fetch project evaluations' });
@@ -123,7 +139,15 @@ router.get('/evaluator/:evaluatorId', auth, async (req, res) => {
     
     const [evaluations] = await connection.execute(query, [evaluatorId]);
     
-    res.json(evaluations);
+    // Parse JSON fields for each evaluation
+    const parsedEvaluations = evaluations.map(evaluation => ({
+      ...evaluation,
+      rubric_scores: typeof evaluation.rubric_scores === 'string' 
+        ? JSON.parse(evaluation.rubric_scores) 
+        : evaluation.rubric_scores
+    }));
+    
+    res.json(parsedEvaluations);
   } catch (error) {
     console.error('Error fetching evaluator evaluations:', error);
     res.status(500).json({ error: 'Failed to fetch evaluator evaluations' });
@@ -176,7 +200,15 @@ router.get('/:evalId', auth, async (req, res) => {
       return res.status(403).json({ error: 'Access denied. You can only view evaluations for your own projects.' });
     }
     
-    res.json(evaluation);
+    // Parse JSON fields
+    const parsedEvaluation = {
+      ...evaluation,
+      rubric_scores: typeof evaluation.rubric_scores === 'string' 
+        ? JSON.parse(evaluation.rubric_scores) 
+        : evaluation.rubric_scores
+    };
+    
+    res.json(parsedEvaluation);
   } catch (error) {
     console.error('Error fetching evaluation:', error);
     res.status(500).json({ error: 'Failed to fetch evaluation' });
@@ -186,7 +218,7 @@ router.get('/:evalId', auth, async (req, res) => {
 });
 
 // Create a new evaluation
-router.post('/', auth, async (req, res) => {
+router.post('/', [auth, logActions.createEvaluation], async (req, res) => {
   let connection;
   try {
     const { project_id, feedback, decision } = req.body;
@@ -282,7 +314,16 @@ router.post('/', auth, async (req, res) => {
     );
     
     console.log(`Evaluation created: ${result.insertId} for project: ${project_id} by user: ${evaluator_id}`);
-    res.status(201).json(newEvaluation[0]);
+    
+    // Parse JSON fields before returning
+    const parsedEvaluation = {
+      ...newEvaluation[0],
+      rubric_scores: typeof newEvaluation[0].rubric_scores === 'string' 
+        ? JSON.parse(newEvaluation[0].rubric_scores) 
+        : newEvaluation[0].rubric_scores
+    };
+    
+    res.status(201).json(parsedEvaluation);
   } catch (error) {
     console.error('Error creating evaluation:', error);
     res.status(500).json({ error: 'Failed to create evaluation' });
@@ -292,7 +333,7 @@ router.post('/', auth, async (req, res) => {
 });
 
 // Update an evaluation
-router.put('/:evalId', auth, async (req, res) => {
+router.put('/:evalId', [auth, logActions.updateEvaluation], async (req, res) => {
   let connection;
   try {
     const { evalId } = req.params;
@@ -380,7 +421,16 @@ router.put('/:evalId', auth, async (req, res) => {
     );
     
     console.log(`Evaluation updated: ${evalId} by user: ${req.user.user.id}`);
-    res.json(updatedEvaluation[0]);
+    
+    // Parse JSON fields before returning
+    const parsedEvaluation = {
+      ...updatedEvaluation[0],
+      rubric_scores: typeof updatedEvaluation[0].rubric_scores === 'string' 
+        ? JSON.parse(updatedEvaluation[0].rubric_scores) 
+        : updatedEvaluation[0].rubric_scores
+    };
+    
+    res.json(parsedEvaluation);
   } catch (error) {
     console.error('Error updating evaluation:', error);
     res.status(500).json({ error: 'Failed to update evaluation' });
@@ -390,7 +440,7 @@ router.put('/:evalId', auth, async (req, res) => {
 });
 
 // Delete an evaluation
-router.delete('/:evalId', auth, async (req, res) => {
+router.delete('/:evalId', [auth, logActions.deleteEvaluation], async (req, res) => {
   let connection;
   try {
     const { evalId } = req.params;

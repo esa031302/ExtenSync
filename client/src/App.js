@@ -1,8 +1,10 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
+import PublicLayout from './components/PublicLayout';
+import PortalProtectedRoute from './components/PortalProtectedRoute';
 import Navbar from './components/Navbar';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
@@ -16,9 +18,23 @@ import Documents from './components/Documents';
 import SystemLogs from './components/SystemLogs';
 import Conversations from './components/Conversations';
 import Calendar from './components/Calendar';
+import Notifications from './components/Notifications';
 
 import Evaluations from './components/Evaluations';
 import EvaluationForm from './components/EvaluationForm';
+import Reports from './components/Reports';
+import ReportView from './components/ReportView';
+
+// Community Portal Components
+import CommunityHome from './components/CommunityHome';
+import RequestSubmission from './components/RequestSubmission';
+import Feedback from './components/Feedback';
+import Announcements from './components/Announcements';
+
+// Beneficiary Components
+import BeneficiaryLogin from './components/BeneficiaryLogin';
+import BeneficiaryRegister from './components/BeneficiaryRegister';
+import BeneficiaryProfile from './components/BeneficiaryProfile';
 
 // Import Bootstrap CSS and JS
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -37,137 +53,201 @@ function App() {
 
 function AppContent() {
   const { user } = useAuth();
+  const location = useLocation();
+
+  // Show navbar only for authenticated users on admin routes (not portal) and not for beneficiaries
+  // Also exclude beneficiary login/register pages
+  const shouldShowNavbar = user && 
+    !location.pathname.startsWith('/portal') && 
+    !location.pathname.startsWith('/beneficiary') &&
+    user.role !== 'Beneficiary';
+
 
   return (
     <div className="App">
-      {user && <Navbar />}
+      {shouldShowNavbar && <Navbar />}
       <main className="bg-light min-vh-100">
-        <Layout>
-          <Routes>
-            <Route path="/" element={<Login />} />
-            <Route path="/login" element={<Login />} />
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
-          <Route
-            path="/profile"
-            element={
-              <ProtectedRoute>
+        <Routes>
+          {/* Public Portal Routes */}
+          <Route path="/portal" element={
+            <PublicLayout>
+              <CommunityHome />
+            </PublicLayout>
+          } />
+          <Route path="/portal/announcements" element={
+            <PublicLayout>
+              <Announcements />
+            </PublicLayout>
+          } />
+          <Route path="/portal/request" element={
+            <PublicLayout>
+              <PortalProtectedRoute>
+                <RequestSubmission />
+              </PortalProtectedRoute>
+            </PublicLayout>
+          } />
+          <Route path="/portal/feedback" element={
+            <PublicLayout>
+              <PortalProtectedRoute>
+                <Feedback />
+              </PortalProtectedRoute>
+            </PublicLayout>
+          } />
+          <Route path="/portal/profile" element={
+            <PublicLayout>
+              <BeneficiaryProfile />
+            </PublicLayout>
+          } />
+          
+          {/* Beneficiary Routes */}
+          <Route path="/beneficiary/login" element={
+            <PublicLayout>
+              <BeneficiaryLogin />
+            </PublicLayout>
+          } />
+          <Route path="/beneficiary/register" element={
+            <PublicLayout>
+              <BeneficiaryRegister />
+            </PublicLayout>
+          } />
+          
+          {/* Root redirect - authenticated users go to dashboard, others to portal */}
+          <Route path="/" element={
+            user && user.role !== 'Beneficiary' ? 
+              <Navigate to="/dashboard" replace /> : 
+              <Navigate to="/portal" replace />
+          } />
+          
+          {/* Employee Login Route */}
+          <Route path="/login" element={<Login />} />
+          
+          <Route path="/dashboard" element={
+            <ProtectedRoute>
+              <Layout>
+                <Dashboard />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/profile" element={
+            <ProtectedRoute>
+              <Layout>
                 <Profile />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/user-management"
-            element={
-              <ProtectedRoute>
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/user-management" element={
+            <ProtectedRoute>
+              <Layout>
                 <UserManagement />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/projects"
-            element={
-              <ProtectedRoute>
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/projects" element={
+            <ProtectedRoute>
+              <Layout>
                 <Projects />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/projects/:id"
-            element={
-              <ProtectedRoute>
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/projects/:id" element={
+            <ProtectedRoute>
+              <Layout>
                 <ProjectView />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/projects/new"
-            element={
-              <ProtectedRoute>
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/projects/new" element={
+            <ProtectedRoute>
+              <Layout>
                 <ProjectProposal />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/projects/:id/edit"
-            element={
-              <ProtectedRoute>
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/projects/:id/edit" element={
+            <ProtectedRoute>
+              <Layout>
                 <ProjectEdit />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/documents"
-            element={
-              <ProtectedRoute>
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/documents" element={
+            <ProtectedRoute>
+              <Layout>
                 <Documents />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/logs"
-            element={
-              <ProtectedRoute>
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/logs" element={
+            <ProtectedRoute>
+              <Layout>
                 <SystemLogs />
-              </ProtectedRoute>
-            }
-          />
-                        <Route
-                path="/conversations"
-                element={
-                  <ProtectedRoute>
-                    <Conversations />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/calendar"
-                element={
-                  <ProtectedRoute>
-                    <Calendar />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/evaluations"
-                element={
-                  <ProtectedRoute>
-                    <Evaluations />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/evaluations/new"
-                element={
-                  <ProtectedRoute>
-                    <EvaluationForm />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/evaluations/:id"
-                element={
-                  <ProtectedRoute>
-                    <EvaluationForm />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/evaluations/:id/edit"
-                element={
-                  <ProtectedRoute>
-                    <EvaluationForm />
-                  </ProtectedRoute>
-                }
-              />
-          </Routes>
-        </Layout>
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/conversations" element={
+            <ProtectedRoute>
+              <Layout>
+                <Conversations />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/calendar" element={
+            <ProtectedRoute>
+              <Layout>
+                <Calendar />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/notifications" element={
+            <ProtectedRoute>
+              <Layout>
+                <Notifications />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/evaluations" element={
+            <ProtectedRoute>
+              <Layout>
+                <Evaluations />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/reports" element={
+            <ProtectedRoute>
+              <Layout>
+                <Reports />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/reports/:id" element={
+            <ProtectedRoute>
+              <Layout>
+                <ReportView />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/evaluations/new" element={
+            <ProtectedRoute>
+              <Layout>
+                <EvaluationForm />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/evaluations/:id" element={
+            <ProtectedRoute>
+              <Layout>
+                <EvaluationForm />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/evaluations/:id/edit" element={
+            <ProtectedRoute>
+              <Layout>
+                <EvaluationForm />
+              </Layout>
+            </ProtectedRoute>
+          } />
+        </Routes>
       </main>
     </div>
   );

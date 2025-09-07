@@ -13,6 +13,10 @@ const ALLOWED_PROPOSERS = new Set([
   'Admin'
 ]);
 
+const BENEFICIARY_ROLES = new Set([
+  'Beneficiary'
+]);
+
 const ELEVATED_ROLES = new Set([
   'Extension Head',
   'GAD',
@@ -36,10 +40,20 @@ router.get('/', auth, async (req, res) => {
       params.push(status);
     }
 
-    // Extension Coordinators can only view their own projects; any role can request their own via ?mine=1
-    if (requester.role === 'Extension Coordinator' || String(mine).toLowerCase() === '1' || String(mine).toLowerCase() === 'true') {
+    // Extension Coordinators can view projects they coordinate OR where they are a participant
+    // Any role can request their own via ?mine=1 (still filters to coordinator_id)
+    if (requester.role === 'Extension Coordinator') {
+      where.push('(p.coordinator_id = ? OR EXISTS (SELECT 1 FROM project_participants pp WHERE pp.project_id = p.project_id AND pp.user_id = ?))');
+      params.push(requester.id, requester.id);
+    } else if (String(mine).toLowerCase() === '1' || String(mine).toLowerCase() === 'true') {
       where.push('p.coordinator_id = ?');
       params.push(requester.id);
+    }
+    
+    // Beneficiaries can only view projects where they are listed as beneficiaries
+    if (BENEFICIARY_ROLES.has(requester.role)) {
+      where.push('p.beneficiaries LIKE ?');
+      params.push(`%${requester.fullname}%`);
     }
 
     let sql = `
@@ -82,7 +96,14 @@ router.get('/:id', auth, async (req, res) => {
 
     const project = rows[0];
     if (requester.role === 'Extension Coordinator' && project.coordinator_id !== requester.id) {
-      return res.status(403).json({ error: 'Access denied' });
+      // Allow if the requester is a participant in this project
+      const [pp] = await db.promise.query(
+        'SELECT 1 FROM project_participants WHERE project_id = ? AND user_id = ? LIMIT 1',
+        [req.params.id, requester.id]
+      );
+      if (pp.length === 0) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
     }
 
     res.json(project);
@@ -141,7 +162,8 @@ router.post(
         financial_plan_details,
         functional_relationships,
         monitoring_evaluation,
-        sustainability_plan
+        sustainability_plan,
+        participants = []
       } = req.body;
 
       const insertParams = [
@@ -191,6 +213,53 @@ router.post(
         });
       }
 
+      // Insert participants into join table if provided and notify them even if join table insert fails
+      if (Array.isArray(participants) && participants.length > 0) {
+        const values = participants
+          .filter((id) => Number.isInteger(id) || (typeof id === 'string' && id.trim() !== ''))
+          .map((id) => [result.insertId, parseInt(id, 10)])
+          .filter((pair) => !Number.isNaN(pair[1]));
+        console.log('Participants received:', participants);
+        console.log('Cleaned participant pairs for insert:', values);
+
+        if (values.length > 0) {
+          // Ensure join table exists, then try to insert participant links
+          try {
+            await db.promise.query(`
+              CREATE TABLE IF NOT EXISTS project_participants (
+                project_id INT NOT NULL,
+                user_id INT NOT NULL,
+                PRIMARY KEY (project_id, user_id),
+                INDEX idx_pp_user (user_id),
+                CONSTRAINT fk_pp_project FOREIGN KEY (project_id) REFERENCES projects(project_id) ON DELETE CASCADE,
+                CONSTRAINT fk_pp_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+              ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            `);
+            await db.promise.query(
+              'INSERT INTO project_participants (project_id, user_id) VALUES ?'
+              , [values]
+            );
+          } catch (participantError) {
+            console.error('Failed to insert participants:', participantError.message);
+          }
+
+          // Insert notifications regardless of participant link insert outcome
+          try {
+            const message = `You have been selected as a participant in "${title}".`;
+            const link = `/projects/${result.insertId}`;
+            const notifValues = values.map(([, userId]) => [userId, message, link, 'Unread']);
+            console.log('Inserting notifications:', notifValues);
+            await db.promise.query(
+              'INSERT INTO notifications (user_id, message, link, status) VALUES ?'
+              , [notifValues]
+            );
+            console.log('Notifications inserted for participants');
+          } catch (notifError) {
+            console.error('Failed to insert notifications:', notifError.message);
+          }
+        }
+      }
+
       const [created] = await db.promise.query(
         `SELECT p.*, u.fullname AS coordinator_fullname
          FROM projects p
@@ -210,7 +279,7 @@ router.post(
 // @route   DELETE /api/projects/:id
 // @desc    Delete a project (elevated roles only)
 // @access  Private
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', [auth, logActions.deleteProject], async (req, res) => {
   try {
     const requester = req.user.user;
     if (!ELEVATED_ROLES.has(requester.role)) {
@@ -233,6 +302,7 @@ router.delete('/:id', auth, async (req, res) => {
           project.coordinator_id,
           `Your project "${project.title}" was deleted by ${requester.fullname}`,
           `/projects/${project.project_id}`
+        
         ]
       );
     }
@@ -251,7 +321,16 @@ router.post('/:id/decision', [
   auth,
   body('decision').isIn(['Approved','Rejected']).withMessage('Decision must be Approved or Rejected'),
   body('remarks').optional().isString(),
-  logActions.evaluateProject
+  (req, res, next) => {
+    // Use appropriate logger based on decision
+    if (req.body.decision === 'Approved') {
+      return logActions.approveProject(req, res, next);
+    } else if (req.body.decision === 'Rejected') {
+      return logActions.rejectProject(req, res, next);
+    } else {
+      return logActions.evaluateProject(req, res, next);
+    }
+  }
 ], async (req, res) => {
   try {
     const requester = req.user.user;
@@ -360,6 +439,7 @@ router.put(
   [
     auth,
     body('title', 'Project title is required').optional().trim().not().isEmpty(),
+    logActions.updateProject
   ],
   async (req, res) => {
     try {
@@ -405,6 +485,22 @@ router.put(
         toUpdate.fund_source = Array.isArray(v) ? JSON.stringify(v) : (v || null);
       }
 
+      // Handle status changes (elevated roles only)
+      if ('status' in req.body) {
+        const elevatedRoles = ['Extension Head', 'GAD', 'Vice Chancellor', 'Chancellor', 'Admin'];
+        if (!elevatedRoles.includes(requester.role)) {
+          return res.status(403).json({ error: 'Only elevated roles can change project status' });
+        }
+        
+        const newStatus = req.body.status;
+        const validStatuses = ['Pending', 'Approved', 'On-Going', 'Completed', 'Rejected'];
+        if (!validStatuses.includes(newStatus)) {
+          return res.status(400).json({ error: 'Invalid status value' });
+        }
+        
+        toUpdate.status = newStatus;
+      }
+
       if (Object.keys(toUpdate).length === 0) {
         return res.status(400).json({ error: 'No fields to update' });
       }
@@ -419,16 +515,97 @@ router.put(
          FROM projects p LEFT JOIN users u ON u.user_id = p.coordinator_id WHERE p.project_id = ?`,
         [req.params.id]
       );
-      // Notify coordinator if edited by someone else
+      // Enhanced notification system for project changes
+      const statusChanged = 'status' in req.body && req.body.status !== project.status;
+      const oldStatus = project.status;
+      const newStatus = req.body.status;
+
+      // Notify coordinator if edited by someone else (always notify for any changes)
       if (project.coordinator_id && requester.id !== project.coordinator_id) {
+        let notificationMessage;
+        
+        if (statusChanged) {
+          // Status-specific notifications
+          switch (newStatus) {
+            case 'Approved':
+              notificationMessage = `🎉 Great news! Your project "${project.title}" has been approved by ${requester.fullname}`;
+              break;
+            case 'Rejected':
+              notificationMessage = `❌ Your project "${project.title}" has been rejected by ${requester.fullname}. Please check the remarks for details.`;
+              break;
+            case 'On-Going':
+              notificationMessage = `🚀 Your project "${project.title}" has been marked as On-Going by ${requester.fullname}`;
+              break;
+            case 'Completed':
+              notificationMessage = `✅ Your project "${project.title}" has been marked as Completed by ${requester.fullname}`;
+              break;
+            case 'Pending':
+              notificationMessage = `⏳ Your project "${project.title}" status has been changed to Pending by ${requester.fullname}`;
+              break;
+            default:
+              notificationMessage = `📝 Your project "${project.title}" status was changed to "${newStatus}" by ${requester.fullname}`;
+          }
+        } else {
+          // General project update notification
+          notificationMessage = `📝 Your project "${project.title}" has been updated by ${requester.fullname}`;
+        }
+        
         await db.promise.query(
           'INSERT INTO notifications (user_id, message, link, status) VALUES (?, ?, ?, "Unread")',
           [
             project.coordinator_id,
-            `Your project "${project.title}" was updated by ${requester.fullname}`,
+            notificationMessage,
             `/projects/${project.project_id}`
           ]
         );
+      }
+
+      // Notify elevated users for important status changes
+      if (statusChanged) {
+        const elevatedUsers = await db.promise.query(
+          'SELECT user_id FROM users WHERE role IN ("Extension Head", "GAD", "Vice Chancellor", "Chancellor", "Admin") AND account_status = "Active" AND user_id != ?',
+          [requester.id]
+        );
+        
+        // Different notifications based on status changes
+        let elevatedNotificationMessage = '';
+        let shouldNotifyElevated = false;
+
+        switch (newStatus) {
+          case 'Approved':
+            if (oldStatus === 'Pending') {
+              elevatedNotificationMessage = `✅ Project "${project.title}" has been approved by ${requester.fullname}`;
+              shouldNotifyElevated = true;
+            }
+            break;
+          case 'Rejected':
+            if (oldStatus === 'Pending') {
+              elevatedNotificationMessage = `❌ Project "${project.title}" has been rejected by ${requester.fullname}`;
+              shouldNotifyElevated = true;
+            }
+            break;
+          case 'On-Going':
+            elevatedNotificationMessage = `🚀 Project "${project.title}" has started (changed to On-Going) by ${requester.fullname}`;
+            shouldNotifyElevated = true;
+            break;
+          case 'Completed':
+            elevatedNotificationMessage = `🎯 Project "${project.title}" has been completed by ${requester.fullname}`;
+            shouldNotifyElevated = true;
+            break;
+        }
+
+        if (shouldNotifyElevated && elevatedNotificationMessage) {
+          for (const user of elevatedUsers[0]) {
+            await db.promise.query(
+              'INSERT INTO notifications (user_id, message, link, status) VALUES (?, ?, ?, "Unread")',
+              [
+                user.user_id,
+                elevatedNotificationMessage,
+                `/projects/${project.project_id}`
+              ]
+            );
+          }
+        }
       }
 
       res.json(updated[0]);
@@ -439,18 +616,12 @@ router.put(
   }
 );
 
-// @route   PUT /api/projects/:id/complete
-// @desc    Mark a project as completed
-// @access  Private (Admin, Extension Head, GAD, Vice Chancellor, Chancellor)
-router.put('/:id/complete', auth, async (req, res) => {
+// @route   PUT /api/projects/:id/start
+// @desc    Start a project (Extension Coordinator - project proposer only)
+// @access  Private
+router.put('/:id/start', [auth, logActions.startProject], async (req, res) => {
   try {
     const requester = req.user.user;
-    
-    // Check if user has permission to mark projects as completed
-    const allowedRoles = ['Admin', 'Extension Head', 'GAD', 'Vice Chancellor', 'Chancellor'];
-    if (!allowedRoles.includes(requester.role)) {
-      return res.status(403).json({ error: 'Insufficient permissions to mark projects as completed' });
-    }
 
     const [existingRows] = await db.promise.query('SELECT * FROM projects WHERE project_id = ?', [req.params.id]);
     if (existingRows.length === 0) {
@@ -459,15 +630,331 @@ router.put('/:id/complete', auth, async (req, res) => {
 
     const project = existingRows[0];
     
-    // Only allow marking approved projects as completed
+    // Project coordinator or elevated roles can start projects
+    const allowedRoles = ['Admin', 'Extension Head', 'GAD', 'Vice Chancellor', 'Chancellor'];
+    const isProjectCoordinator = project.coordinator_id === requester.id;
+    const hasElevatedRole = allowedRoles.includes(requester.role);
+    
+    if (!isProjectCoordinator && !hasElevatedRole) {
+      return res.status(403).json({ error: 'Only the project proposer or elevated roles can start this project' });
+    }
+    
+    // Project must be approved to be started
     if (project.status !== 'Approved') {
-      return res.status(400).json({ error: 'Only approved projects can be marked as completed' });
+      return res.status(400).json({ error: 'Only approved projects can be started' });
     }
 
-    // Update project status to completed
+    // Check if today is on or after the start date
+    if (project.start_date) {
+      const today = new Date();
+      const startDate = new Date(project.start_date);
+      today.setHours(0, 0, 0, 0);
+      startDate.setHours(0, 0, 0, 0);
+      
+      if (today < startDate) {
+        return res.status(400).json({ error: 'Project can only be started on or after the start date' });
+      }
+    }
+
+    // Update project status to On-Going
     await db.promise.query(
       'UPDATE projects SET status = ?, last_updated = NOW() WHERE project_id = ?',
-      ['Completed', req.params.id]
+      ['On-Going', req.params.id]
+    );
+
+    // Enhanced notifications for project start
+    // Notify coordinator if started by someone else
+    if (project.coordinator_id && project.coordinator_id !== requester.id) {
+      await db.promise.query(
+        'INSERT INTO notifications (user_id, message, link, status) VALUES (?, ?, ?, "Unread")',
+        [
+          project.coordinator_id,
+          `🚀 Your project "${project.title}" has been started by ${requester.fullname}`,
+          `/projects/${project.project_id}`
+        ]
+      );
+    }
+
+    // Create notification for elevated users
+    const elevatedUsers = await db.promise.query(
+      'SELECT user_id FROM users WHERE role IN ("Extension Head", "GAD", "Vice Chancellor", "Chancellor", "Admin") AND account_status = "Active" AND user_id != ?',
+      [requester.id]
+    );
+    
+    for (const user of elevatedUsers[0]) {
+      await db.promise.query(
+        'INSERT INTO notifications (user_id, message, link, status) VALUES (?, ?, ?, "Unread")',
+        [
+          user.user_id,
+          `🚀 Project "${project.title}" has been started by ${requester.fullname}`,
+          `/projects/${project.project_id}`
+        ]
+      );
+    }
+
+    // Get updated project
+    const [updated] = await db.promise.query(
+      `SELECT p.*, u.fullname AS coordinator_fullname, u.department_college AS coordinator_department
+       FROM projects p LEFT JOIN users u ON u.user_id = p.coordinator_id WHERE p.project_id = ?`,
+      [req.params.id]
+    );
+
+    res.json(updated[0]);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// @route   PUT /api/projects/:id/complete
+// @desc    Mark a project as completed
+// @access  Private (Extension Coordinator - project proposer, or elevated roles)
+router.put('/:id/complete', [auth, logActions.completeProject], async (req, res) => {
+  try {
+    const requester = req.user.user;
+
+    const [existingRows] = await db.promise.query('SELECT * FROM projects WHERE project_id = ?', [req.params.id]);
+    if (existingRows.length === 0) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    const project = existingRows[0];
+    
+    // Allow project coordinator or elevated roles to complete projects
+    const allowedRoles = ['Admin', 'Extension Head', 'GAD', 'Vice Chancellor', 'Chancellor'];
+    const isProjectCoordinator = project.coordinator_id === requester.id;
+    const hasElevatedRole = allowedRoles.includes(requester.role);
+    
+    if (!isProjectCoordinator && !hasElevatedRole) {
+      return res.status(403).json({ error: 'Insufficient permissions to mark projects as completed' });
+    }
+    
+    // Only allow completing On-Going projects
+    if (project.status !== 'On-Going') {
+      return res.status(400).json({ error: 'Only on-going projects can be marked as completed' });
+    }
+
+    // Check if completing early and handle early completion reason
+    let earlyCompletionReason = null;
+    if (isProjectCoordinator && project.end_date) {
+      const today = new Date();
+      const endDate = new Date(project.end_date);
+      today.setHours(0, 0, 0, 0);
+      endDate.setHours(0, 0, 0, 0);
+      
+      if (today < endDate) {
+        // Completing before end date - require reason
+        earlyCompletionReason = req.body.early_completion_reason;
+        if (!earlyCompletionReason || earlyCompletionReason.trim() === '') {
+          return res.status(400).json({ 
+            error: 'Early completion reason is required when completing project before the scheduled end date',
+            requiresReason: true,
+            endDate: project.end_date
+          });
+        }
+      }
+    }
+
+    // Update project status to completed (with early completion reason if applicable)
+    if (earlyCompletionReason) {
+      await db.promise.query(
+        'UPDATE projects SET status = ?, early_completion_reason = ?, last_updated = NOW() WHERE project_id = ?',
+        ['Completed', earlyCompletionReason.trim(), req.params.id]
+      );
+    } else {
+      await db.promise.query(
+        'UPDATE projects SET status = ?, last_updated = NOW() WHERE project_id = ?',
+        ['Completed', req.params.id]
+      );
+    }
+
+    // Enhanced notifications for project completion
+    // Create notification for project coordinator if completed by someone else
+    if (project.coordinator_id && project.coordinator_id !== requester.id) {
+      let coordinatorMessage = `✅ Your project "${project.title}" has been marked as completed by ${requester.fullname}`;
+      if (earlyCompletionReason) {
+        coordinatorMessage = `✅ Your project "${project.title}" has been completed early by ${requester.fullname}. Reason: "${earlyCompletionReason}"`;
+      }
+      
+      await db.promise.query(
+        'INSERT INTO notifications (user_id, message, link, status) VALUES (?, ?, ?, "Unread")',
+        [
+          project.coordinator_id,
+          coordinatorMessage,
+          `/projects/${project.project_id}`
+        ]
+      );
+    }
+    
+    // Create notification for elevated users
+    const elevatedUsers = await db.promise.query(
+      'SELECT user_id FROM users WHERE role IN ("Extension Head", "GAD", "Vice Chancellor", "Chancellor", "Admin") AND account_status = "Active" AND user_id != ?',
+      [requester.id]
+    );
+    
+    let elevatedMessage = `🎯 Project "${project.title}" has been completed by ${requester.fullname}`;
+    if (earlyCompletionReason) {
+      elevatedMessage = `🎯 Project "${project.title}" has been completed early by ${requester.fullname}. Reason: "${earlyCompletionReason}"`;
+    }
+    
+    for (const user of elevatedUsers[0]) {
+      await db.promise.query(
+        'INSERT INTO notifications (user_id, message, link, status) VALUES (?, ?, ?, "Unread")',
+        [
+          user.user_id,
+          elevatedMessage,
+          `/projects/${project.project_id}`
+        ]
+      );
+    }
+
+    // Get updated project
+    const [updated] = await db.promise.query(
+      `SELECT p.*, u.fullname AS coordinator_fullname, u.department_college AS coordinator_department
+       FROM projects p LEFT JOIN users u ON u.user_id = p.coordinator_id WHERE p.project_id = ?`,
+      [req.params.id]
+    );
+
+    res.json(updated[0]);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// @route   PUT /api/projects/:id/repropose
+// @desc    Repropose a rejected project (project coordinator only)
+// @access  Private
+router.put('/:id/repropose', [auth, logActions.reproposeProject], async (req, res) => {
+  try {
+    const requester = req.user.user;
+    
+    const [existingRows] = await db.promise.query('SELECT * FROM projects WHERE project_id = ?', [req.params.id]);
+    if (existingRows.length === 0) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    const project = existingRows[0];
+    
+    // Only the project coordinator can repropose their rejected project
+    if (project.coordinator_id !== requester.id) {
+      return res.status(403).json({ error: 'Only the project coordinator can repropose this project' });
+    }
+    
+    // Only rejected projects can be reproposed
+    if (project.status !== 'Rejected') {
+      return res.status(400).json({ error: 'Only rejected projects can be reproposed' });
+    }
+
+    // Update project status to Pending and clear remarks
+    await db.promise.query(
+      'UPDATE projects SET status = ?, remarks = NULL, last_updated = NOW() WHERE project_id = ?',
+      ['Pending', req.params.id]
+    );
+
+    // Create notification for elevated users about reproposal
+    const elevatedUsers = await db.promise.query(
+      'SELECT user_id FROM users WHERE role IN ("Extension Head", "GAD", "Vice Chancellor", "Chancellor", "Admin") AND account_status = "Active"'
+    );
+    
+    for (const user of elevatedUsers[0]) {
+      await db.promise.query(
+        'INSERT INTO notifications (user_id, message, link, status) VALUES (?, ?, ?, "Unread")',
+        [
+          user.user_id,
+          `📝 Project "${project.title}" has been reproposed by ${requester.fullname}`,
+          `/projects/${project.project_id}`
+        ]
+      );
+    }
+
+    // Get updated project
+    const [updated] = await db.promise.query(
+      `SELECT p.*, u.fullname AS coordinator_fullname, u.department_college AS coordinator_department
+       FROM projects p LEFT JOIN users u ON u.user_id = p.coordinator_id WHERE p.project_id = ?`,
+      [req.params.id]
+    );
+
+    res.json(updated[0]);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// @route   PUT /api/projects/:id/dates
+// @desc    Update project dates (elevated roles only - not Extension Coordinator)
+// @access  Private
+router.put('/:id/dates', [
+  auth,
+  body('start_date').optional().isISO8601().withMessage('Start date must be a valid date'),
+  body('end_date').optional().isISO8601().withMessage('End date must be a valid date'),
+  body('start_time').optional().matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage('Start time must be in HH:MM format'),
+  body('end_time').optional().matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage('End time must be in HH:MM format'),
+  logActions.updateProject
+], async (req, res) => {
+  try {
+    const requester = req.user.user;
+    
+    // Only elevated roles can adjust dates, OR coordinators can adjust dates for their own rejected projects
+    const allowedRoles = ['Admin', 'Extension Head', 'GAD', 'Vice Chancellor', 'Chancellor'];
+    const isElevatedRole = allowedRoles.includes(requester.role);
+    const isCoordinatorEditingRejected = requester.role === 'Extension Coordinator' && 
+                                        project.coordinator_id === requester.id && 
+                                        project.status === 'Rejected';
+    
+    if (!isElevatedRole && !isCoordinatorEditingRejected) {
+      return res.status(403).json({ error: 'Insufficient permissions to adjust project dates' });
+    }
+
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const [existingRows] = await db.promise.query('SELECT * FROM projects WHERE project_id = ?', [req.params.id]);
+    if (existingRows.length === 0) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    const project = existingRows[0];
+    const { start_date, end_date, start_time, end_time } = req.body;
+
+    // Validate that end date is not before start date
+    if (start_date && end_date && new Date(end_date) < new Date(start_date)) {
+      return res.status(400).json({ error: 'End date cannot be before start date' });
+    }
+
+    // Build update query dynamically
+    const updates = [];
+    const params = [];
+    
+    if (start_date !== undefined) {
+      updates.push('start_date = ?');
+      params.push(start_date || null);
+    }
+    if (end_date !== undefined) {
+      updates.push('end_date = ?');
+      params.push(end_date || null);
+    }
+    if (start_time !== undefined) {
+      updates.push('start_time = ?');
+      params.push(start_time || null);
+    }
+    if (end_time !== undefined) {
+      updates.push('end_time = ?');
+      params.push(end_time || null);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'No date/time fields provided for update' });
+    }
+
+    // Update the project
+    params.push(req.params.id);
+    await db.promise.query(
+      `UPDATE projects SET ${updates.join(', ')}, last_updated = NOW() WHERE project_id = ?`,
+      params
     );
 
     // Create notification for project coordinator
@@ -476,10 +963,51 @@ router.put('/:id/complete', auth, async (req, res) => {
         'INSERT INTO notifications (user_id, message, link, status) VALUES (?, ?, ?, "Unread")',
         [
           project.coordinator_id,
-          `Your project "${project.title}" has been marked as completed`,
+          `The dates for your project "${project.title}" have been updated by ${requester.fullname}`,
           `/projects/${project.project_id}`
         ]
       );
+    }
+
+    // Update calendar event if it exists
+    try {
+      const [calendarEvents] = await db.promise.query(
+        'SELECT * FROM calendar_events WHERE project_id = ?',
+        [req.params.id]
+      );
+      
+      if (calendarEvents.length > 0) {
+        const calendarUpdates = [];
+        const calendarParams = [];
+        
+        if (start_date !== undefined) {
+          calendarUpdates.push('start_date = ?');
+          calendarParams.push(start_date || null);
+        }
+        if (end_date !== undefined) {
+          calendarUpdates.push('end_date = ?');
+          calendarParams.push(end_date || null);
+        }
+        if (start_time !== undefined) {
+          calendarUpdates.push('start_time = ?');
+          calendarParams.push(start_time || null);
+        }
+        if (end_time !== undefined) {
+          calendarUpdates.push('end_time = ?');
+          calendarParams.push(end_time || null);
+        }
+        
+        if (calendarUpdates.length > 0) {
+          calendarParams.push(req.params.id);
+          await db.promise.query(
+            `UPDATE calendar_events SET ${calendarUpdates.join(', ')} WHERE project_id = ?`,
+            calendarParams
+          );
+        }
+      }
+    } catch (calendarError) {
+      console.error('Failed to update calendar event:', calendarError.message);
+      // Don't fail the request if calendar update fails
     }
 
     // Get updated project
@@ -533,6 +1061,7 @@ router.get('/stats/dashboard', auth, async (req, res) => {
         'Pending': 0,
         'Approved': 0,
         'Rejected': 0,
+        'On-Going': 0,
         'Completed': 0
       };
 
@@ -548,9 +1077,11 @@ router.get('/stats/dashboard', auth, async (req, res) => {
         totalProjects: Object.values(statusCounts).reduce((sum, count) => sum + count, 0)
       });
     } else {
-      // For other roles, get total project count
+      // For other roles, get counts by initiative type (Program, Project, Activity)
       let sql = `
-        SELECT COUNT(*) as total
+        SELECT 
+          p.initiative_type,
+          COUNT(*) as count
         FROM projects p
       `;
 
@@ -558,11 +1089,31 @@ router.get('/stats/dashboard', auth, async (req, res) => {
         sql += ' WHERE ' + where.join(' AND ');
       }
 
+      sql += ' GROUP BY p.initiative_type ORDER BY p.initiative_type';
+
       const [rows] = await db.promise.query(sql, params);
+      
+      // Ensure we have all initiative types represented
+      const initiativeCounts = {
+        'Program': 0,
+        'Project': 0,
+        'Activity': 0
+      };
+
+      rows.forEach(row => {
+        if (row.initiative_type && initiativeCounts.hasOwnProperty(row.initiative_type)) {
+          initiativeCounts[row.initiative_type] = row.count;
+        }
+      });
+
+      const totalProjects = Object.values(initiativeCounts).reduce((sum, count) => sum + count, 0);
       
       res.json({
         role: requester.role,
-        totalProjects: rows[0].total
+        totalProjects: totalProjects,
+        initiativesByType: initiativeCounts,
+        totalPrograms: initiativeCounts.Program,
+        totalActivities: initiativeCounts.Activity
       });
     }
   } catch (err) {

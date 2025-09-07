@@ -57,6 +57,34 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
+// @route   GET /api/users/eligible-participants
+// @desc    Get users eligible to participate in projects (Extension Coordinator and above, excluding Beneficiary and Admin)
+// @access  Private
+router.get('/eligible-participants', auth, async (req, res) => {
+  try {
+    const allowedRoles = [
+      'Extension Coordinator',
+      'Extension Head',
+      'GAD',
+      'Vice Chancellor',
+      'Chancellor'
+    ];
+
+    const [users] = await db.promise.query(
+      `SELECT user_id, fullname, email, role, department_college
+       FROM users
+       WHERE role IN (?) AND account_status = 'Active'
+       ORDER BY role ASC, fullname ASC`,
+      [allowedRoles]
+    );
+
+    res.json(users);
+  } catch (err) {
+    console.error('Failed to fetch eligible participants:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // @route   POST /api/users
 // @desc    Create a new user (admin only)
 // @access  Private
@@ -359,6 +387,51 @@ router.delete('/:id/photo', auth, async (req, res) => {
     );
 
     res.json(updatedUsers[0]);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// @route   PUT /api/users/profile
+// @desc    Update user profile
+// @access  Private
+router.put('/profile', [
+  auth,
+  body('fullname', 'Full name is required').not().isEmpty(),
+  body('email', 'Please include a valid email').isEmail(),
+  body('phone').optional().isString(),
+  body('organization').optional().isString(),
+  body('address').optional().isString()
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { fullname, email, phone, organization, address } = req.body;
+    const userId = req.user.user.id;
+
+    // Check if email is already taken by another user
+    const [existingUsers] = await db.promise.query(
+      'SELECT user_id FROM users WHERE email = ? AND user_id != ?',
+      [email, userId]
+    );
+
+    if (existingUsers.length > 0) {
+      return res.status(400).json({ error: 'Email is already taken by another user' });
+    }
+
+    // Update user profile
+    await db.promise.query(
+      `UPDATE users 
+       SET fullname = ?, email = ?, phone = ?, department_college = ?, address = ?, updated_at = NOW()
+       WHERE user_id = ?`,
+      [fullname, email, phone, organization, address, userId]
+    );
+
+    res.json({ message: 'Profile updated successfully' });
   } catch (err) {
     console.error(err.message);
     res.status(500).json({ error: 'Server error' });
