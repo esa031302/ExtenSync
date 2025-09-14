@@ -1,0 +1,202 @@
+.documents-container {
+  background-color: #f8f9fa;
+  min-height: 100vh;
+}
+
+.documents-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 2rem 0;
+  margin-bottom: 2rem;
+}
+
+.documents-table {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.documents-table th {
+  background-color: #f8f9fa;
+  border-bottom: 2px solid #dee2e6;
+  font-weight: 600;
+  color: #495057;
+}
+
+.documents-table td {
+  vertical-align: middle;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.documents-table tr:hover {
+  background-color: #f8f9fa;
+}
+
+.document-icon {
+  font-size: 1.2rem;
+  color: #007bff;
+}
+
+.document-name {
+  font-weight: 500;
+  color: #212529;
+}
+
+.document-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.upload-button {
+  background: linear-gradient(135deg, #aa220d 0%, #af2105 100%);
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  transition: all 0.3s ease;
+}
+
+.upload-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
+}
+
+.download-button {
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.download-button:hover {
+  background-color: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
+.delete-button {
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.delete-button:hover {
+  background-color: #dc3545;
+  color: white;
+  border-color: #dc3545;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #6c757d;
+}
+
+.empty-state i {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.modal-content {
+  border-radius: 8px;
+  border: none;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-bottom: 1px solid #dee2e6;
+  border-radius: 8px 8px 0 0;
+}
+
+.modal-footer {
+  background-color: #f8f9fa;
+  border-top: 1px solid #dee2e6;
+  border-radius: 0 0 8px 8px;
+}
+
+.file-input {
+  border: 2px dashed #dee2e6;
+  border-radius: 6px;
+  padding: 1rem;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.file-input:hover {
+  border-color: #007bff;
+  background-color: #f8f9ff;
+}
+
+.file-input:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.alert {
+  border-radius: 6px;
+  border: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.alert-success {
+  background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+  color: #155724;
+}
+
+.alert-danger {
+  background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+  color: #721c24;
+}
+
+/* Icon-only buttons without background */
+.icon-only-btn {
+  padding: 0.25rem;
+  border: none;
+  background: transparent !important;
+  box-shadow: none !important;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.12s ease, color 0.12s ease;
+}
+
+.icon-only-btn i {
+  font-size: 1.1rem;
+}
+
+.icon-only-btn:hover {
+  transform: translateY(-1px) scale(1.05);
+}
+
+.icon-download i {
+  color: #0d6efd; /* Bootstrap primary */
+}
+
+.icon-download:hover i,
+.icon-download:focus i {
+  color: #0b5ed7; /* primary hover */
+}
+
+.icon-delete i {
+  color: #dc3545; /* Bootstrap danger */
+}
+
+.icon-delete:hover i,
+.icon-delete:focus i {
+  color: #bb2d3b; /* darker danger */
+}
+
+@media (max-width: 768px) {
+  .documents-table {
+    font-size: 0.9rem;
+  }
+  
+  .document-actions {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  
+  .document-actions .btn {
+    width: 100%;
+  }
+}

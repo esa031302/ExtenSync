@@ -1,0 +1,100 @@
+.profile-photo-display {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.profile-photo-placeholder {
+  width: 120px;
+  height: 120px;
+  background-color: #f8f9fa;
+  border: 2px solid #e9ecef;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+}
+
+.profile-photo-placeholder i {
+  font-size: 3rem;
+  color: #6c757d;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .profile-photo-placeholder {
+    width: 100px;
+    height: 100px;
+  }
+  
+  .profile-photo-placeholder i {
+    font-size: 2.5rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .profile-photo-placeholder {
+    width: 80px;
+    height: 80px;
+  }
+  
+  .profile-photo-placeholder i {
+    font-size: 2rem;
+  }
+}
+
+/* Signature Section Styles */
+.signature-section {
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-top: 1rem;
+}
+
+.signature-display {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.signature-placeholder {
+  width: 200px;
+  height: 80px;
+  background-color: #ffffff;
+  border: 2px dashed #dee2e6;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+}
+
+.signature-placeholder i {
+  font-size: 2rem;
+  color: #6c757d;
+}
+
+/* Responsive adjustments for signature */
+@media (max-width: 768px) {
+  .signature-placeholder {
+    width: 180px;
+    height: 70px;
+  }
+  
+  .signature-placeholder i {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .signature-placeholder {
+    width: 160px;
+    height: 60px;
+  }
+  
+  .signature-placeholder i {
+    font-size: 1.25rem;
+  }
+}

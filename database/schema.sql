@@ -1,0 +1,57 @@
+-- This file is for reference only - the database already exists
+-- The extensync_db database has the following structure:
+
+-- Users table (already exists)
+-- CREATE TABLE users (
+--   user_id INT AUTO_INCREMENT PRIMARY KEY,
+--   fullname VARCHAR(255) NOT NULL,
+--   email VARCHAR(255) NOT NULL UNIQUE,
+--   password VARCHAR(255) NOT NULL,
+--   role ENUM('Extension Coordinator','Extension Head','GAD','Vice Chancellor','Chancellor','Admin') NOT NULL,
+--   department_college VARCHAR(255) NOT NULL,
+--   profile_photo TEXT DEFAULT NULL,
+--   signature_path TEXT DEFAULT NULL,
+--   account_status ENUM('Active','Inactive') DEFAULT 'Active',
+--   date_registered DATETIME NOT NULL,
+--   last_login DATETIME DEFAULT NULL,
+--   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+--   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+-- );
+
+-- Projects table (already exists)
+-- CREATE TABLE projects (
+--   project_id INT AUTO_INCREMENT PRIMARY KEY,
+--   request_type VARCHAR(255) DEFAULT NULL,
+--   initiative_type VARCHAR(255) DEFAULT NULL,
+--   title VARCHAR(255) NOT NULL,
+--   location VARCHAR(255) DEFAULT NULL,
+--   duration VARCHAR(255) DEFAULT NULL,
+--   extension_agenda TEXT DEFAULT NULL,
+--   sdg_goals TEXT DEFAULT NULL,
+--   offices_involved TEXT DEFAULT NULL,
+--   programs_involved TEXT DEFAULT NULL,
+--   project_leaders TEXT DEFAULT NULL,
+--   partner_agencies TEXT DEFAULT NULL,
+--   beneficiaries TEXT DEFAULT NULL,
+--   total_cost VARCHAR(255) DEFAULT NULL,
+--   fund_source TEXT DEFAULT NULL,
+--   rationale TEXT DEFAULT NULL,
+--   objectives_general TEXT DEFAULT NULL,
+--   objectives_specific TEXT DEFAULT NULL,
+--   expected_output TEXT DEFAULT NULL,
+--   strategies_methods TEXT DEFAULT NULL,
+--   financial_plan_details TEXT DEFAULT NULL,
+--   functional_relationships TEXT DEFAULT NULL,
+--   monitoring_evaluation TEXT DEFAULT NULL,
+--   sustainability_plan TEXT DEFAULT NULL,
+--   coordinator_id INT DEFAULT NULL,
+--   remarks TEXT DEFAULT NULL,
+--   status ENUM('Pending','Approved','Rejected') DEFAULT 'Pending',
+--   date_submitted TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+--   last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+-- );
+
+-- Other tables: documents, evaluations, login_history, notifications, reports
+-- All tables already exist with proper relationships and constraints
+
+-- Note: The database is already set up and ready to use

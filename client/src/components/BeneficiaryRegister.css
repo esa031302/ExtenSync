@@ -1,0 +1,130 @@
+.beneficiary-register-container {
+  min-height: calc(100vh - 200px);
+  display: flex;
+  align-items: center;
+  padding: 2rem 0;
+}
+
+/* Back button */
+.back-to-portal {
+  position: fixed;
+  top: 1.5rem;
+  left: 1.5rem;
+  color: #0d6efd !important;
+  text-decoration: none;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  z-index: 1000;
+}
+
+.back-to-portal:hover {
+  text-decoration: none;
+  background: rgba(255, 255, 255, 1);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.beneficiary-register-card {
+  border-radius: 15px;
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  margin: 2rem 0;
+}
+
+.brand-logo {
+  height: 60px;
+  width: auto;
+}
+
+.beneficiary-register-button {
+  background: linear-gradient(45deg, #198754, #20c997);
+  border: none;
+  border-radius: 25px;
+  padding: 0.75rem 2rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  min-width: 250px;
+}
+
+.beneficiary-register-button:hover {
+  background: linear-gradient(45deg, #157347, #1aa179);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(25, 135, 84, 0.3);
+}
+
+.beneficiary-register-button:disabled {
+  background: #6c757d;
+  transform: none;
+  box-shadow: none;
+}
+
+.form-control {
+  border-radius: 10px;
+  border: 2px solid #e9ecef;
+  padding: 0.75rem 1rem;
+  transition: all 0.3s ease;
+}
+
+.form-control:focus {
+  border-color: #198754;
+  box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.25);
+}
+
+.form-label {
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 0.5rem;
+}
+
+.alert {
+  border-radius: 10px;
+  border: none;
+  font-weight: 500;
+}
+
+.text-primary {
+  color: #198754 !important;
+}
+
+.shadow {
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+
+.form-text {
+  font-size: 0.875rem;
+  color: #6c757d;
+}
+
+@media (max-width: 768px) {
+  .beneficiary-register-container {
+    min-height: calc(100vh - 150px);
+    padding: 1rem 0;
+  }
+  
+  .beneficiary-register-card {
+    margin: 1rem;
+  }
+  
+  .brand-logo {
+    height: 50px;
+  }
+  
+  .beneficiary-register-button {
+    min-width: 200px;
+    padding: 0.6rem 1.5rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .beneficiary-register-container {
+    min-height: calc(100vh - 120px);
+    padding: 0.5rem 0;
+  }
+  
+  .beneficiary-register-card .card-body {
+    padding: 2rem !important;
+  }
+}

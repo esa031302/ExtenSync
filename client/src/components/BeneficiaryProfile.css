@@ -1,0 +1,127 @@
+.beneficiary-profile-container {
+  padding: 2rem 0;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+}
+
+.card {
+  border: none;
+  border-radius: 15px;
+}
+
+.card-header {
+  border-radius: 15px 15px 0 0 !important;
+  border: none;
+}
+
+.form-control:focus {
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+.btn-primary {
+  background: linear-gradient(45deg, #0d6efd, #6610f2);
+  border: none;
+  border-radius: 8px;
+  padding: 0.75rem 2rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(45deg, #0b5ed7, #5a0fc8);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3);
+}
+
+.btn-outline-secondary {
+  border-radius: 8px;
+  padding: 0.75rem 2rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.btn-outline-secondary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
+}
+
+.form-label {
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 0.5rem;
+}
+
+.form-control {
+  border-radius: 8px;
+  border: 2px solid #e9ecef;
+  padding: 0.75rem 1rem;
+  transition: all 0.3s ease;
+}
+
+.form-control:hover {
+  border-color: #ced4da;
+}
+
+.alert {
+  border-radius: 10px;
+  border: none;
+  font-weight: 500;
+}
+
+.text-primary {
+  color: #0d6efd !important;
+}
+
+.shadow-sm {
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
+}
+
+.info-item {
+  padding: 0.5rem 0;
+}
+
+.badge {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+@media (max-width: 768px) {
+  .beneficiary-profile-container {
+    padding: 1rem 0;
+  }
+  
+  .btn-primary,
+  .btn-outline-secondary {
+    padding: 0.6rem 1.5rem;
+  }
+}
+
+/* Profile Management Modal Styles */
+.profile-management-modal .modal-content {
+  border-radius: 15px;
+  border: none;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.profile-management-modal .modal-header {
+  border-radius: 15px 15px 0 0;
+  border: none;
+}
+
+.profile-management-modal .modal-footer {
+  border-radius: 0 0 15px 15px;
+  border: none;
+  background-color: #f8f9fa;
+}
+
+.profile-management-modal .modal-body {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.profile-management-modal .card {
+  border: none;
+  box-shadow: none;
+  background-color: transparent;
+}

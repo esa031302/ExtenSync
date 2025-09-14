@@ -1,0 +1,240 @@
+/* User Profile Wrapper */
+.user-profile-wrapper {
+  background-color: #ffffff;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  transition: all 0.3s ease;
+}
+
+/* Collapsed State */
+.user-profile-wrapper.collapsed {
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 1rem;
+  gap: 0.5rem;
+}
+
+/* Profile Photo Section */
+.profile-photo-section {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.profile-photo {
+  width: 50px;
+  height: 50px;
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+}
+
+.profile-photo-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.profile-photo-fallback {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f8f9fa;
+  border-radius: 50%;
+}
+
+.profile-photo i {
+  font-size: 1.5rem;
+  color: #6c757d;
+}
+
+/* Profile Details Section */
+.profile-details-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+/* Collapsed Profile Details */
+.profile-details-section.collapsed {
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.user-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #495057;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.user-info-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+  font-size: 0.9rem;
+  color: #495057;
+  line-height: 1.3;
+}
+
+.info-item i {
+  color: #6c757d;
+  width: 14px;
+  text-align: center;
+  margin-right: 0.5rem;
+  font-size: 0.8rem;
+}
+
+/* Status Button */
+.status-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: #dc3545;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-top: 0.5rem;
+  width: fit-content;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+/* Collapsed Status Button */
+.user-profile-wrapper.collapsed .status-button {
+  margin-top: 0.25rem;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.75rem;
+}
+
+.status-dot-white {
+  width: 6px;
+  height: 6px;
+  background-color: white;
+  border-radius: 50%;
+}
+
+/* Status Styles */
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 0.5rem;
+}
+
+.status-dot.status-success {
+  background-color: #28a745 !important;
+}
+
+.status-dot.status-danger {
+  background-color: #dc3545 !important;
+}
+
+.status-dot.status-warning {
+  background-color: #ffc107 !important;
+}
+
+.status-dot.status-secondary {
+  background-color: #6c757d !important;
+}
+
+.status-dot.status-info {
+  background-color: #17a2b8 !important;
+}
+
+.status-text {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #495057;
+}
+
+.status-text.status-success {
+  color: #28a745 !important;
+}
+
+.status-text.status-danger {
+  color: #dc3545 !important;
+}
+
+.status-text.status-warning {
+  color: #ffc107 !important;
+}
+
+.status-text.status-secondary {
+  color: #6c757d !important;
+}
+
+.status-text.status-info {
+  color: #17a2b8 !important;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .profile-container {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 1.5rem;
+  }
+  
+  .profile-photo {
+    width: 100px;
+    height: 100px;
+  }
+  
+  .profile-photo i {
+    font-size: 2.5rem;
+  }
+  
+  .user-info-list {
+    align-items: center;
+  }
+  
+  .info-item {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 576px) {
+  .user-profile-card {
+    margin-bottom: 1rem;
+  }
+  
+  .profile-photo {
+    width: 80px;
+    height: 80px;
+  }
+  
+  .profile-photo i {
+    font-size: 2rem;
+  }
+  
+  .user-name {
+    font-size: 1.1rem;
+  }
+}

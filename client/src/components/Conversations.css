@@ -1,0 +1,264 @@
+/* Conversation Container Styles */
+.conversation-messages {
+  padding: 1rem;
+  background-color: #f8f9fa;
+}
+
+/* Message Styles */
+.message {
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  border-radius: 12px;
+  max-width: 70%;
+  word-wrap: break-word;
+  position: relative;
+  background-color: #ffffff;
+  border: 1px solid #e9ecef;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.own-message {
+  margin-left: auto;
+  background-color: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
+.own-message .message-sender {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.own-message .message-time {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Message Header */
+.message-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.message-sender {
+  font-weight: 600;
+  color: #495057;
+}
+
+.message-time {
+  color: #6c757d;
+  font-size: 0.75rem;
+}
+
+/* Message Content */
+.message-content {
+  line-height: 1.4;
+  color: #212529;
+}
+
+.own-message .message-content {
+  color: white;
+}
+
+/* Typing Indicator */
+.typing-indicator {
+  padding: 0.5rem 1rem;
+  color: #6c757d;
+  font-style: italic;
+  font-size: 0.875rem;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  border-left: 3px solid #007bff;
+}
+
+/* Conversation List Styles */
+.list-group-item {
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  padding: 0.75rem 1rem;
+  transition: background-color 0.2s ease;
+}
+
+.list-group-item:hover {
+  background-color: #f8f9fa;
+}
+
+.list-group-item.active {
+  background-color: #007bff;
+  border-color: #007bff;
+}
+
+.list-group-item.active .text-muted {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Badge Styles */
+.badge {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+}
+
+/* Form Styles */
+.form-control:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* Button Styles */
+.btn-primary {
+  background-color: #007bff;
+  border-color: #007bff;
+}
+
+.btn-primary:hover {
+  background-color: #0056b3;
+  border-color: #0056b3;
+}
+
+.btn-outline-primary {
+  color: #007bff;
+  border-color: #007bff;
+}
+
+.btn-outline-primary:hover {
+  background-color: #007bff;
+  border-color: #007bff;
+}
+
+/* Card Styles */
+.card {
+  border: 1px solid #e9ecef;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+  font-weight: 600;
+}
+
+/* Modal Styles */
+.modal-header {
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .message {
+    max-width: 85%;
+  }
+  
+  .conversation-messages {
+    height: 300px !important;
+  }
+}
+
+/* Scrollbar Styles */
+.conversation-messages::-webkit-scrollbar {
+  width: 6px;
+}
+
+.conversation-messages::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.conversation-messages::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.conversation-messages::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Loading Animation */
+.spinner-border {
+  color: #007bff;
+}
+
+/* Error Alert Styles */
+.alert {
+  border-radius: 8px;
+  border: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.alert-danger {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+/* Empty State Styles */
+.text-muted {
+  color: #6c757d !important;
+}
+
+.bi-chat-dots {
+  color: #dee2e6;
+}
+
+/* Animation for new messages */
+.message {
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Hover effects for interactive elements */
+.btn:hover {
+  transform: translateY(-1px);
+  transition: transform 0.2s ease;
+}
+
+.list-group-item:hover {
+  transform: translateX(2px);
+  transition: transform 0.2s ease;
+}
+
+/* Focus states for accessibility */
+.btn:focus,
+.form-control:focus,
+.list-group-item:focus {
+  outline: 2px solid #007bff;
+  outline-offset: 2px;
+}
+
+/* User selection styles */
+.list-group-item .bi-check-circle-fill {
+  font-size: 1.2rem;
+}
+
+/* Filter section styles */
+.filter-section {
+  background-color: #f8f9fa;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+/* Conversation name styles */
+.conversation-name {
+  font-weight: 600;
+  color: #495057;
+}
+
+.conversation-type {
+  font-size: 0.75rem;
+  color: #6c757d;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
